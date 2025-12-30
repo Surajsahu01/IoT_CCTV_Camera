@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>⚙️ Camera Settings</h2>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Video Configuration</h3>
+    </div>
+    <div class="card-body">
+        <form id="cameraForm">
+            <div class="form-group">
+                <label>Resolution</label>
+                <select id="resolution" class="form-control">
+                    <option value="1920x1080">1920x1080 (Full HD)</option>
+                    <option value="1280x720">1280x720 (HD)</option>
+                    <option value="640x480">640x480 (VGA)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Frame Rate (FPS)</label>
+                <input type="number" id="fps" class="form-control" min="1" max="60" value="30">
+            </div>
+
+            <div class="form-group">
+                <label>Brightness: <span id="brightnessVal">0</span></label>
+                <input type="range" id="brightness" class="slider" min="-1" max="1" step="0.1" value="0">
+            </div>
+
+            <div class="form-group">
+                <label>Contrast: <span id="contrastVal">1.0</span></label>
+                <input type="range" id="contrast" class="slider" min="0" max="2" step="0.1" value="1">
+            </div>
+
+            <div class="form-group">
+                <label>Saturation: <span id="saturationVal">1.0</span></label>
+                <input type="range" id="saturation" class="slider" min="0" max="2" step="0.1" value="1">
+            </div>
+
+            <div class="form-group">
+                <label>Sharpness: <span id="sharpnessVal">1.0</span></label>
+                <input type="range" id="sharpness" class="slider" min="0" max="2" step="0.1" value="1">
+            </div>
+
+            <div class="form-group">
+                <label>Lens Position (Focus): <span id="lensVal">0.0</span></label>
+                <input type="range" id="lens_position" class="slider" min="0" max="10" step="0.1" value="0">
+            </div>
+
+            <div class="form-group">
+                <label>Auto Focus Mode</label>
+                <select id="autofocus_mode" class="form-control">
+                    <option value="manual">Manual</option>
+                    <option value="auto">Auto</option>
+                    <option value="continuous">Continuous</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Exposure Mode</label>
+                <select id="exposure_mode" class="form-control">
+                    <option value="auto">Auto</option>
+                    <option value="manual">Manual</option>
+                    <option value="night">Night</option>
+                    <option value="sports">Sports</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>White Balance</label>
+                <select id="awb_mode" class="form-control">
+                    <option value="auto">Auto</option>
+                    <option value="daylight">Daylight</option>
+                    <option value="cloudy">Cloudy</option>
+                    <option value="tungsten">Tungsten</option>
+                    <option value="fluorescent">Fluorescent</option>
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+                <button type="button" id="resetBtn" class="btn btn-secondary">↻ Reset</button>
+                <button type="button" id="restartBtn" class="btn btn-danger">🔄 Restart Camera</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* Gray out disabled sliders */
+input.slider:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    const form = document.getElementById('cameraForm');
+    const resetBtn = document.getElementById('resetBtn');
+    const restartBtn = document.getElementById('restartBtn');
+
+    const autofocusMode = document.getElementById('autofocus_mode');
+    const lensSlider = document.getElementById('lens_position');
+
+    /* ---------- SLIDER VALUES ---------- */
+    ['brightness', 'contrast', 'saturation', 'sharpness', 'lens_position'].forEach(id => {
+        const slider = document.getElementById(id);
+        const display = document.getElementById(id + 'Val');
+        slider.oninput = () => {
+            display.textContent = slider.value;
+        };
+    });
+
+    /* ---------- ENABLE/DISABLE LENS BASED ON AUTOFOCUS ---------- */
+    function updateLensSlider() {
+        lensSlider.disabled = (autofocusMode.value !== 'manual');
+    }
+
+    // Initial check
+    updateLensSlider();
+
+    // Update when autofocus mode changes
+    autofocusMode.addEventListener('change', updateLensSlider);
+
+    /* ---------- LOAD SETTINGS ---------- */
+    fetch('/api/camera/settings')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+
+            const s = data.settings;
+            document.getElementById('resolution').value = `${s.width}x${s.height}`;
+            document.getElementById('fps').value = s.fps;
+            document.getElementById('brightness').value = s.brightness;
+            document.getElementById('contrast').value = s.contrast;
+            document.getElementById('saturation').value = s.saturation;
+            document.getElementById('sharpness').value = s.sharpness;
+            document.getElementById('lens_position').value = s.lens_position;
+            document.getElementById('autofocus_mode').value = s.autofocus_mode;
+            document.getElementById('exposure_mode').value = s.exposure_mode;
+            document.getElementById('awb_mode').value = s.awb_mode;
+
+            document.getElementById('brightnessVal').textContent = s.brightness;
+            document.getElementById('contrastVal').textContent = s.contrast;
+            document.getElementById('saturationVal').textContent = s.saturation;
+            document.getElementById('sharpnessVal').textContent = s.sharpness;
+            document.getElementById('lensVal').textContent = s.lens_position;
+
+            // Update lens slider state after loading settings
+            updateLensSlider();
+        });
+
+    /* ---------- SAVE SETTINGS ---------- */
+    form.onsubmit = (e) => {
+        e.preventDefault();
+
+        const [width, height] = document.getElementById('resolution').value.split('x');
+
+        fetch('/api/camera/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                width: +width,
+                height: +height,
+                fps: +fps.value,
+                brightness: +brightness.value,
+                contrast: +contrast.value,
+                saturation: +saturation.value,
+                sharpness: +sharpness.value,
+                lens_position: +lens_position.value,
+                autofocus_mode: autofocus_mode.value,
+                exposure_mode: exposure_mode.value,
+                awb_mode: awb_mode.value
+            })
+        })
+        .then(r => r.json())
+        .then(() => {
+            showNotification("Camera settings saved successfully.", "success");
+        });
+    };
+
+    /* ---------- RESET ---------- */
+    resetBtn.onclick = () => {
+        if (!confirm('Reset all settings to default?')) return;
+
+        fetch('/api/camera/reset', { method: 'POST' })
+            .then(() => {
+                showNotification("Camera settings reset to default.", "success");
+                location.reload();
+            });
+    };
+
+    /* ---------- 🔴 RESTART CAMERA ---------- */
+    restartBtn.onclick = () => {
+        if (!confirm('Restart camera stream now?')) return;
+
+        restartBtn.disabled = true;
+        restartBtn.textContent = '⏳ Restarting...';
+
+        showNotification("Restarting camera stream…", "success");
+
+        fetch('/api/stream/restart', { method: 'POST' })
+            .then(() => {
+                setTimeout(() => {
+                    showNotification("Camera restarted successfully.", "success");
+                    restartBtn.disabled = false;
+                    restartBtn.textContent = '🔄 Restart Camera';
+                }, 3000);
+            })
+            .catch(() => {
+                showNotification("Camera restart failed.", "error");
+                restartBtn.disabled = false;
+                restartBtn.textContent = '🔄 Restart Camera';
+            });
+    };
+
+});
+</script>
+{% endblock %}

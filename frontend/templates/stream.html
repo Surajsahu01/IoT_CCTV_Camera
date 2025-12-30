@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📡 Stream Configuration</h2>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>RTSP Server Settings</h3>
+    </div>
+    <div class="card-body">
+        <form id="streamForm">
+            <div class="form-group">
+                <label>RTSP Server IP</label>
+                <input type="text" id="server_ip" class="form-control" 
+                       placeholder="192.168.1.100" required>
+            </div>
+
+            <div class="form-group">
+                <label>RTSP Port</label>
+                <input type="number" id="rtsp_port" class="form-control" 
+                       value="8554" min="1" max="65535" required>
+            </div>
+
+            <div class="form-group">
+                <label>Stream Name</label>
+                <input type="text" id="stream_name" class="form-control" 
+                       placeholder="camera" required>
+            </div>
+
+            <!-- <div class="form-group">
+                <label>Video Resolution</label>
+                <select id="stream_resolution" class="form-control">
+                    <option value="1920x1080">1920x1080 (Full HD)</option>
+                    <option value="1280x720">1280x720 (HD)</option>
+                    <option value="640x480">640x480 (VGA)</option>
+                </select>
+            </div> -->
+
+            <!-- <div class="form-group">
+                <label>Frame Rate (FPS)</label>
+                <input type="number" id="stream_fps" class="form-control" 
+                       value="30" min="1" max="60" required>
+            </div> -->
+
+            <div class="form-group">
+                <label>Bitrate (bps)</label>
+                <input type="number" id="bitrate" class="form-control" 
+                       value="4000000" min="100000" max="20000000">
+                <small>Recommended: 2000000-8000000 for HD</small>
+            </div>
+
+            <!-- <div class="form-group">
+                <label>Lens Position (Focus): <span id="streamLensVal">0.0</span></label>
+                <input type="range" id="stream_lens" class="slider" 
+                       min="0" max="10" step="0.1" value="0">
+            </div> -->
+
+            <button type="submit" class="btn btn-primary">💾 Save Configuration</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Stream Status</h3>
+    </div>
+    <div class="card-body">
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span id="currentStatus" class="info-value">Checking...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">RTSP URL:</span>
+                <span id="currentUrl" class="info-value">-</span>
+            </div>
+        </div>
+        <div class="button-group">
+            <button id="startBtn" class="btn btn-success">▶ Start</button>
+            <button id="stopBtn" class="btn btn-danger">⏹ Stop</button>
+            <button id="restartBtn" class="btn btn-warning">↻ Restart</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('streamForm');
+    const lensSlider = document.getElementById('stream_lens');
+    const lensDisplay = document.getElementById('streamLensVal');
+
+    // lensSlider.oninput = () => lensDisplay.textContent = lensSlider.value;
+
+    // Load current settings
+    fetch('/api/stream/settings')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const s = data.settings;
+                document.getElementById('server_ip').value = s.server_ip;
+                document.getElementById('rtsp_port').value = s.rtsp_port;
+                document.getElementById('stream_name').value = s.stream_name;
+                // document.getElementById('stream_resolution').value = `${s.width}x${s.height}`;
+                // document.getElementById('stream_fps').value = s.fps;
+                document.getElementById('bitrate').value = s.bitrate;
+                // document.getElementById('stream_lens').value = s.lens_position || 0;
+                // lensDisplay.textContent = s.lens_position || 0;
+            }
+        });
+
+    // Load status
+    function updateStatus() {
+        fetch('/api/stream/status')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('currentStatus').textContent = data.status;
+                    document.getElementById('currentStatus').className = 
+                        'info-value ' + (data.running ? 'status-active' : 'status-inactive');
+                    document.getElementById('currentUrl').textContent = data.rtsp_url;
+                }
+            });
+    }
+
+    updateStatus();
+    setInterval(updateStatus, 3000);
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        // const [width, height] = document.getElementById('stream_resolution').value.split('x');
+        
+        const settings = {
+            server_ip: document.getElementById('server_ip').value,
+            rtsp_port: parseInt(document.getElementById('rtsp_port').value),
+            stream_name: document.getElementById('stream_name').value,
+            // width: parseInt(width),
+            // height: parseInt(height),
+            // fps: parseInt(document.getElementById('stream_fps').value),
+            bitrate: parseInt(document.getElementById('bitrate').value),
+            // lens_position: parseFloat(document.getElementById('stream_lens').value)
+        };
+
+        fetch('/api/stream/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(settings)
+        })
+        .then(r => r.json())
+        .then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) updateStatus();
+        });
+    };
+
+    document.getElementById('startBtn').onclick = () => {
+        fetch('/api/stream/start', {method: 'POST'})
+            .then(r => r.json())
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+                updateStatus();
+            });
+    };
+
+    document.getElementById('stopBtn').onclick = () => {
+        fetch('/api/stream/stop', {method: 'POST'})
+            .then(r => r.json())
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+                updateStatus();
+            });
+    };
+
+    document.getElementById('restartBtn').onclick = () => {
+        fetch('/api/stream/restart', {method: 'POST'})
+            .then(r => r.json())
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+                updateStatus();
+            });
+    };
+});
+</script>
+{% endblock %}
+
+
+
+
+

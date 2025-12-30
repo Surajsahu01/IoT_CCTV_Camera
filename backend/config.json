@@ -1,0 +1,48 @@
+{
+  "camera": {
+    "width": 1280,
+    "height": 720,
+    "fps": 25,
+    "brightness": 0,
+    "contrast": 1,
+    "saturation": 1,
+    "sharpness": 1,
+    "lens_position": 2,
+    "autofocus_mode": "manual",
+    "exposure_mode": "auto",
+    "awb_mode": "auto"
+  },
+  "stream": {
+    "server_ip": "10.49.37.200",
+    "rtsp_port": 554,
+    "stream_name": "camera1",
+    "bitrate": 3000000
+  },
+  "substream": {
+    "width": 640,
+    "height": 360,
+    "fps": 15,
+    "bitrate": 600000
+  },
+  "auth": {
+    "username": "admin",
+    "password": "password"
+  },
+  "network": {
+    "default": {
+      "mode": "static",
+      "ip_address": "192.168.1.50",
+      "gateway": "192.168.1.1",
+      "dns": "8.8.8.8"
+    },
+    "current": {
+      "mode": "static",
+      "ip_address": "192.168.1.50",
+      "gateway": "192.168.1.1",
+      "dns": "8.8.8.8"
+    }
+  },
+  "webrtc": {
+    "enabled": true
+  }
+}

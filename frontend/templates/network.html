@@ -1,0 +1,739 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🌐 Network Configuration</h2>
+</div>
+
+<!-- ================= NETWORK STATUS ================= -->
+<div class="card">
+    <div class="card-header">
+        <h3>Network Status</h3>
+        <button id="refreshStatus" class="btn btn-sm">↻ Refresh</button>
+    </div>
+    <div class="card-body">
+        <div class="info-grid">
+
+            <div class="info-item">
+                <span class="info-label">IP Address</span>
+                <span id="ipAddress" class="info-value">Loading...</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">MAC Address</span>
+                <span id="macAddress" class="info-value">Loading...</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Gateway</span>
+                <span id="gateway" class="info-value">Loading...</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Connection Type</span>
+                <span id="connType" class="info-value">Loading...</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Active Interface</span>
+                <span id="activeInterface" class="info-value">-</span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ================= ETHERNET STATUS ================= -->
+<div class="card">
+    <div class="card-header">
+        <h3>Ethernet Status</h3>
+    </div>
+    <div class="card-body">
+        <div class="info-grid">
+
+            <div class="info-item">
+                <span class="info-label">Status</span>
+                <span id="ethStatus" class="info-value">-</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">IP Address</span>
+                <span id="ethIp" class="info-value">-</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">MAC Address</span>
+                <span id="ethMac" class="info-value">-</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Link Speed</span>
+                <span id="ethSpeed" class="info-value">-</span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ================= WIFI STATUS ================= -->
+<div class="card">
+    <div class="card-header">
+        <h3>WiFi Status</h3>
+    </div>
+    <div class="card-body">
+        <div class="info-grid">
+
+            <div class="info-item">
+                <span class="info-label">WiFi Status</span>
+                <span id="wifiStatus" class="info-value">Checking...</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">SSID</span>
+                <span id="ssid" class="info-value">-</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Signal</span>
+                <span id="signal" class="info-value">-</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">WiFi IP</span>
+                <span id="wifiIp" class="info-value">-</span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- IP Configuration Mode -->
+<div class="card">
+    <div class="card-header">
+        <h3>IP Configuration Mode</h3>
+    </div>
+    <div class="card-body">
+        <div class="button-group">
+            <button id="dhcpModeBtn" class="btn btn-secondary">🔄 DHCP (Automatic)</button>
+            <button id="staticModeBtn" class="btn btn-secondary">📌 Static IP (Manual)</button>
+            <button id="resetIpBtn" class="btn btn-danger">♻️ Reset to Default IP</button>
+        </div>
+        <p style="margin-top: 10px; color: #666; font-size: 14px;">
+            <strong>DHCP:</strong> Automatic IP assignment by router<br>
+            <strong>Static IP:</strong> Fixed IP address you set manually
+        </p>
+    </div>
+</div>
+
+<!-- Static IP Configuration -->
+<div class="card" id="staticIpCard" style="display: none;">
+    <div class="card-header">
+        <h3>Static IP Configuration</h3>
+    </div>
+    <div class="card-body">
+        <form id="staticIpForm">
+            <div class="form-group">
+                <label>Static IP Address</label>
+                <input type="text" id="static_ip" class="form-control" 
+                       placeholder="192.168.1.150" required>
+                <small>Example: 192.168.1.100</small>
+            </div>
+
+            <div class="form-group">
+                <label>Gateway</label>
+                <input type="text" id="static_gateway" class="form-control" 
+                       placeholder="192.168.1.1" required>
+                <small>Usually your router's IP</small>
+            </div>
+
+            <div class="form-group">
+                <label>DNS Server</label>
+                <input type="text" id="static_dns" class="form-control" 
+                       value="8.8.8.8" required>
+                <small>Google DNS or router IP</small>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn btn-primary">💾 Apply Static IP</button>
+                <button type="button" id="cancelStaticBtn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </form>
+
+        <div class="card-body" style="margin-top: 15px; padding: 10px;  border-left: 3px solid #666;">
+            <strong>⚠️ Important:</strong>
+            <ul style="margin: 5px 0 0 20px; font-size: 14px;">
+                <li>Write down the new IP before applying</li>
+                <li>Ensure IP is not used by another device</li>
+                <li>You'll reconnect using the new IP address</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- WiFi Configuration -->
+<div class="card">
+    <div class="card-header">
+        <h3>WiFi Configuration</h3>
+        <button id="scanWifiBtn" class="btn btn-sm">📡 Scan Networks</button>
+    </div>
+    <div class="card">
+        <!-- Available Networks List -->
+        <!-- <div id="wifiNetworks" style="display: none; margin-bottom: 20px;">
+            <h4 style="margin-bottom: 10px;">Available Networks:</h4>
+            <div id="networkList" class="network-list">
+                <p style="text-align: center; color: #666;">Scanning...</p>
+            </div>
+        </div> -->
+
+
+        <!-- Available Networks List -->
+            <div id="wifiNetworks" style="display: none; margin-bottom: 20px;">
+                <h4 style="margin-bottom: 10px;">Available Networks:</h4>
+                <div id="networkList" class="network-lists">
+                    <p style="text-align: center; color: #666;">Scanning...</p>
+                </div>
+            </div>
+
+        <!-- WiFi Connection Form -->
+        <form id="wifiForm">
+            <div class="form-group">
+                <label>WiFi SSID (Network Name)</label>
+                <input type="text" id="wifi_ssid" class="form-control" 
+                       placeholder="Enter WiFi name" required>
+            </div>
+
+            <div class="form-group">
+                <label>WiFi Password</label>
+                <input type="password" id="wifi_password" class="form-control" 
+                       placeholder="Enter WiFi password">
+            </div>
+
+            <div class="form-group">
+                <input type="checkbox" id="showPassword">
+                <label for="showPassword" style="display: inline; margin-left: 5px;">
+                    Show password
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">📶 Connect WiFi</button>
+        </form>
+    </div>
+</div>
+
+<!-- <style>
+    .network-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid ;
+        border-radius: 4px;
+        padding: 5px;
+    }
+
+    .network-item {
+        padding: 12px;
+        margin: 5px 0;
+        background: #454343;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+    }
+
+    /* .network-item:hover {
+        background: #e8e8e8;
+    } */
+
+    .network-name {
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .network-details {
+        display: flex;
+        gap: 15px;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .form-group small {
+        display: block;
+        color: #666;
+        margin-top: 5px;
+        font-size: 12px;
+    }
+</style> -->
+
+<style>
+    /* Network List Container */
+    /* .network-lists {
+        max-height: 400px;
+        overflow-y: auto;
+        border-radius: 12px;
+        padding: 8px;
+        background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+        box-shadow: 
+            0 4px 6px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    } */
+
+    /* Example: Using Midnight Blue */
+    .network-lists {
+        max-height: 400px;
+        overflow-y: auto;
+        border-radius: 12px;
+        padding: 8px;
+        background: linear-gradient(135deg, #001845 0%, #023e7d 50%, #0077b6 100%);
+        box-shadow: 
+            0 4px 6px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(0, 180, 216, 0.15);
+    }
+
+    /* Custom Scrollbar */
+    .network-lists::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .network-lists::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .network-lists::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #4a90e2 0%, #357abd 100%);
+        border-radius: 4px;
+    }
+
+    .network-lists::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, #5aa3f7 0%, #4a90e2 100%);
+    }
+
+    /* Network Item */
+    .network-items {
+        padding: 16px 18px;
+        margin: 8px 0;
+        background: linear-gradient(135deg, #2d2d2d 0%, #3a3a3a 100%);
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .network-items::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(74, 144, 226, 0.1) 50%, 
+            transparent 100%);
+        transition: left 0.5s;
+    }
+
+    .network-items:hover::before {
+        left: 100%;
+    }
+
+    .network-items:hover {
+        background: linear-gradient(135deg, #3a3a3a 0%, #454545 100%);
+        border-color: rgba(74, 144, 226, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 
+            0 8px 16px rgba(0, 0, 0, 0.4),
+            0 0 20px rgba(74, 144, 226, 0.15);
+    }
+
+    /* Network Name */
+    .network-name {
+        font-weight: 600;
+        font-size: 15px;
+        color: #ffffff;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Network Details */
+    .network-details {
+        display: flex;
+        gap: 20px;
+        font-size: 13px;
+        color: #b0b0b0;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+    }
+
+    .network-details span {
+        padding: 6px 12px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .network-items:hover .network-details span {
+        background: rgba(74, 144, 226, 0.15);
+        color: #4a90e2;
+    }
+
+    .btn-danger {
+    background: linear-gradient(135deg, #c62828, #e53935);
+    color: #fff;
+    }
+
+    .btn-danger:hover {
+        background: linear-gradient(135deg, #b71c1c, #d32f2f);
+    }
+
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    const refreshBtn = document.getElementById('refreshStatus');
+    const wifiForm = document.getElementById('wifiForm');
+    const staticForm = document.getElementById('staticIpForm');
+    const dhcpModeBtn = document.getElementById('dhcpModeBtn');
+    const staticModeBtn = document.getElementById('staticModeBtn');
+    const cancelStaticBtn = document.getElementById('cancelStaticBtn');
+    const scanWifiBtn = document.getElementById('scanWifiBtn');
+    const staticIpCard = document.getElementById('staticIpCard');
+    const wifiNetworks = document.getElementById('wifiNetworks');
+    const showPasswordCheckbox = document.getElementById('showPassword');
+    const resetIpBtn = document.getElementById('resetIpBtn');
+
+    // Track if static IP form has been manually edited
+    let staticFormTouched = false;
+
+    // Track when user edits static IP fields
+    ['static_ip', 'static_gateway', 'static_dns'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => {
+            staticFormTouched = true;
+        });
+    });
+
+    /* ---------- LOAD STATUS ---------- */
+    // function loadStatus() {
+    //     fetch('/api/network/status')
+    //         .then(r => r.json())
+    //         .then(d => {
+    //             if (!d.success) return;
+
+    //             document.getElementById('ipAddress').textContent = d.ip_address;
+    //             document.getElementById('macAddress').textContent = d.mac_address;
+    //             document.getElementById('gateway').textContent = d.gateway || 'N/A';
+                
+    //             const wifiStatusEl = document.getElementById('wifiStatus');
+    //             wifiStatusEl.textContent = d.wifi_connected ? 'Connected' : 'Disconnected';
+    //             wifiStatusEl.className = 'info-value ' + 
+    //                 (d.wifi_connected ? 'status-active' : 'status-inactive');
+                
+    //             document.getElementById('ssid').textContent = d.ssid || '-';
+    //             document.getElementById('signal').textContent = d.signal_strength || '-';
+    //             document.getElementById('connType').textContent = d.connection_type || '-';
+
+    //             // Only pre-fill static IP form if user hasn't touched it
+    //             if (!staticFormTouched) {
+    //                 if (d.ip_address && d.ip_address !== 'N/A') {
+    //                     document.getElementById('static_ip').value = d.ip_address;
+    //                 }
+    //                 if (d.gateway && d.gateway !== 'N/A') {
+    //                     document.getElementById('static_gateway').value = d.gateway;
+    //                 }
+    //             }
+    //         });
+    // }
+    function loadStatus() {
+        fetch('/api/network/status')
+            .then(r => r.json())
+            .then(d => {
+
+                /* ===== ACTIVE NETWORK ===== */
+                document.getElementById('ipAddress').textContent = d.ip_address || 'N/A';
+                document.getElementById('gateway').textContent = d.gateway || 'N/A';
+                document.getElementById('connType').textContent =
+                    d.connection_type === 'ethernet' ? 'Ethernet' :
+                    d.connection_type === 'wifi' ? 'WiFi' : 'Disconnected';
+
+                document.getElementById('activeInterface').textContent =
+                    d.active_interface || '-';
+
+                /* Active MAC */
+                document.getElementById('macAddress').textContent =
+                    d.connection_type === 'ethernet'
+                        ? d.ethernet.mac
+                        : d.wifi.mac || 'N/A';
+
+                /* ===== ETHERNET ===== */
+                document.getElementById('ethStatus').textContent =
+                    d.ethernet.connected ? 'Connected' : 'Disconnected';
+
+                document.getElementById('ethIp').textContent =
+                    d.ethernet.ip_address || '-';
+
+                document.getElementById('ethMac').textContent =
+                    d.ethernet.mac || '-';
+
+                document.getElementById('ethSpeed').textContent =
+                    d.ethernet.speed || '-';
+
+                /* ===== WIFI ===== */
+                document.getElementById('wifiStatus').textContent =
+                    d.wifi.connected ? 'Connected' : 'Disconnected';
+
+                document.getElementById('ssid').textContent =
+                    d.wifi.ssid || '-';
+
+                document.getElementById('signal').textContent =
+                    d.wifi.signal || '-';
+
+                document.getElementById('wifiIp').textContent =
+                    d.wifi.ip_address || '-';
+            })
+            .catch(err => {
+                console.error('Network status error:', err);
+            });
+    }
+
+    refreshBtn.onclick = loadStatus;
+    loadStatus();
+    setInterval(loadStatus, 10000);
+
+
+    /* ---------- RESET TO DEFAULT IP ---------- */
+    resetIpBtn.onclick = () => {
+        if (!confirm(
+            'Reset network settings to default IP?\n\n' +
+            'This will restore the factory IP address and you may need to reconnect.'
+        )) {
+            return;
+        }
+
+        resetIpBtn.disabled = true;
+        resetIpBtn.textContent = '⏳ Resetting...';
+
+        fetch('/api/network/reset', { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                showNotification(d.message, d.success ? 'success' : 'error');
+
+                if (d.success) {
+                    staticIpCard.style.display = 'none';
+                    staticFormTouched = false;
+
+                    alert(
+                        '✓ Network reset to default IP.\n\n' +
+                        'If the IP has changed, reconnect using the default address.'
+                    );
+
+                    // Give network time to settle
+                    setTimeout(loadStatus, 4000);
+                }
+            })
+            .catch(err => {
+                showNotification('Error: ' + err, 'error');
+            })
+            .finally(() => {
+                resetIpBtn.disabled = false;
+                resetIpBtn.textContent = '♻️ Reset to Default IP';
+            });
+    };
+
+
+    /* ---------- IP MODE SELECTION ---------- */
+    dhcpModeBtn.onclick = () => {
+        if (!confirm('Switch to DHCP (automatic IP)? Your IP address may change.')) {
+            return;
+        }
+
+        dhcpModeBtn.disabled = true;
+        dhcpModeBtn.textContent = '⏳ Applying...';
+
+        fetch('/api/network/dhcp', { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                showNotification(d.message, d.success ? 'success' : 'error');
+                if (d.success) {
+                    staticIpCard.style.display = 'none';
+                    staticFormTouched = false; // Reset flag
+                    setTimeout(loadStatus, 3000);
+                }
+            })
+            .catch(err => showNotification('Error: ' + err, 'error'))
+            .finally(() => {
+                dhcpModeBtn.disabled = false;
+                dhcpModeBtn.textContent = '🔄 DHCP (Automatic)';
+            });
+    };
+
+    staticModeBtn.onclick = () => {
+        staticIpCard.style.display = 'block';
+        staticIpCard.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    cancelStaticBtn.onclick = () => {
+        staticIpCard.style.display = 'none';
+        staticFormTouched = false; // Reset when cancelled
+    };
+
+    /* ---------- STATIC IP ---------- */
+    staticForm.onsubmit = e => {
+        e.preventDefault();
+
+        const ip = document.getElementById('static_ip').value;
+        const gateway = document.getElementById('static_gateway').value;
+        const dns = document.getElementById('static_dns').value;
+
+        if (!confirm(`Set static IP to ${ip}?\n\nYou will need to reconnect using this new IP address.`)) {
+            return;
+        }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Applying...';
+
+        fetch('/api/network/static', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                ip_address: ip,
+                gateway: gateway,
+                dns: dns
+            })
+        })
+        .then(r => r.json())
+        .then(d => {
+            showNotification(d.message, d.success ? 'success' : 'error');
+            if (d.success) {
+                staticFormTouched = false; // Reset flag
+                alert(`✓ Static IP configured!\n\nNew IP: ${ip}\n\nRedirecting in 3 seconds...`);
+                setTimeout(() => {
+                    window.location.href = `http://${ip}:5000/network`;
+                }, 3000);
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '💾 Apply Static IP';
+            }
+        })
+        .catch(err => {
+            showNotification('Error: ' + err, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '💾 Apply Static IP';
+        });
+    };
+
+    /* ---------- WIFI ---------- */
+    wifiForm.onsubmit = e => {
+        e.preventDefault();
+
+        const ssid = document.getElementById('wifi_ssid').value;
+        const password = document.getElementById('wifi_password').value;
+
+        if (!confirm(`Connect to WiFi network: ${ssid}?`)) {
+            return;
+        }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Connecting...';
+
+        fetch('/api/network/wifi', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                ssid: ssid,
+                password: password
+            })
+        })
+        .then(r => r.json())
+        .then(d => {
+            showNotification(d.message, d.success ? 'success' : 'error');
+            if (d.success) {
+                wifiForm.reset();
+                setTimeout(loadStatus, 4000);
+            }
+        })
+        .catch(err => showNotification('Error: ' + err, 'error'))
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '📶 Connect WiFi';
+        });
+    };
+
+    /* ---------- WIFI SCAN ---------- */
+    scanWifiBtn.onclick = () => {
+        scanWifiBtn.disabled = true;
+        scanWifiBtn.textContent = '⏳ Scanning...';
+        wifiNetworks.style.display = 'block';
+        document.getElementById('networkList').innerHTML = 
+            '<p style="text-align: center; color: #666;">Scanning for networks...</p>';
+
+        fetch('/api/network/scan')
+            .then(r => {
+                const contentType = r.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("Server returned non-JSON response. Check if the endpoint exists.");
+                }
+                return r.json();
+            })
+            .then(d => {
+                const networkList = document.getElementById('networkList');
+                
+                if (d.success && d.networks && d.networks.length > 0) {
+                    networkList.innerHTML = '';
+                    d.networks.forEach(network => {
+                        const div = document.createElement('div');
+                        div.className = 'network-items';
+                        div.onclick = () => {
+                            document.getElementById('wifi_ssid').value = network.ssid;
+                            document.getElementById('wifi_password').focus();
+                        };
+                        
+                        div.innerHTML = `
+                            <div class="network-name">${network.ssid}</div>
+                            <div class="network-details">
+                                <span>🔒 ${network.security || 'Open'}</span>
+                                <span>📶 ${network.signal || 'N/A'}</span>
+                            </div>
+                        `;
+                        networkList.appendChild(div);
+                    });
+                } else {
+                    const message = d.message || 'No networks found';
+                    networkList.innerHTML = 
+                        `<p style="text-align: center; color: #666;">${message}</p>`;
+                }
+            })
+            .catch(err => {
+                console.error('Scan error:', err);
+                document.getElementById('networkList').innerHTML = 
+                    `<p style="text-align: center; color: #f44336;">Error: ${err.message}</p>`;
+            })
+            .finally(() => {
+                scanWifiBtn.disabled = false;
+                scanWifiBtn.textContent = '📡 Scan Networks';
+            });
+    };
+
+    /* ---------- SHOW/HIDE PASSWORD ---------- */
+    showPasswordCheckbox.onchange = () => {
+        const passwordInput = document.getElementById('wifi_password');
+        passwordInput.type = showPasswordCheckbox.checked ? 'text' : 'password';
+    };
+
+});
+</script>
+{% endblock %}

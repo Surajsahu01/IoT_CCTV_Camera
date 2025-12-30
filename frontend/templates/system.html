@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>💻 System Management</h2>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>System Information</h3>
+        <button id="refreshInfo" class="btn btn-sm">↻ Refresh</button>
+    </div>
+    <div class="card-body">
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Hostname:</span>
+                <span id="hostname" class="info-value">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">OS Version:</span>
+                <span id="osVersion" class="info-value">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Uptime:</span>
+                <span id="uptime" class="info-value">Loading...</span>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>CPU</h4>
+                <div class="stat-value" id="cpuUsage">0%</div>
+                <div class="stat-label">Usage</div>
+            </div>
+            <div class="stat-card">
+                <h4>Temperature</h4>
+                <div class="stat-value" id="cpuTemp">0°C</div>
+                <div class="stat-label">CPU Temp</div>
+            </div>
+            <div class="stat-card">
+                <h4>Memory</h4>
+                <div class="stat-value" id="memUsage">0%</div>
+                <div class="stat-label"><span id="memDetails">0 / 0 GB</span></div>
+            </div>
+            <div class="stat-card">
+                <h4>Disk</h4>
+                <div class="stat-value" id="diskUsage">0%</div>
+                <div class="stat-label"><span id="diskDetails">0 / 0 GB</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>System Logs</h3>
+    </div>
+    <div class="card-body">
+        <div class="form-group">
+            <label>Log Type</label>
+            <select id="logType" class="form-control">
+                <option value="stream">Stream Logs</option>
+                <option value="backend">Backend Logs</option>
+                <option value="system">System Logs</option>
+            </select>
+        </div>
+        <button id="loadLogs" class="btn btn-secondary">📄 Load Logs</button>
+        <pre id="logContent" class="log-viewer">Select log type and click Load Logs</pre>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Power Management</h3>
+    </div>
+    <div class="card-body">
+        <div class="button-group">
+            <button id="rebootBtn" class="btn btn-warning">🔄 Reboot System</button>
+            <button id="shutdownBtn" class="btn btn-danger">⏻ Shutdown</button>
+        </div>
+        <p class="warning-text">⚠️ Warning: These actions will interrupt streaming and require physical access to restart.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const refreshBtn = document.getElementById('refreshInfo');
+    const loadLogsBtn = document.getElementById('loadLogs');
+    const rebootBtn = document.getElementById('rebootBtn');
+    const shutdownBtn = document.getElementById('shutdownBtn');
+
+    function loadSystemInfo() {
+        fetch('/api/system/info')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('hostname').textContent = data.hostname;
+                    document.getElementById('osVersion').textContent = data.os_version;
+                    document.getElementById('uptime').textContent = data.uptime;
+                    document.getElementById('cpuUsage').textContent = data.cpu_usage.toFixed(1) + '%';
+                    document.getElementById('cpuTemp').textContent = data.cpu_temp.toFixed(1) + '°C';
+                    document.getElementById('memUsage').textContent = data.memory.percent.toFixed(1) + '%';
+                    document.getElementById('memDetails').textContent = 
+                        `${data.memory.used} / ${data.memory.total} GB`;
+                    document.getElementById('diskUsage').textContent = data.disk.percent.toFixed(1) + '%';
+                    document.getElementById('diskDetails').textContent = 
+                        `${data.disk.used} / ${data.disk.total} GB`;
+                    
+                    // Color code temperature
+                    const tempEl = document.getElementById('cpuTemp');
+                    if (data.cpu_temp > 70) {
+                        tempEl.style.color = '#e74c3c';
+                    } else if (data.cpu_temp > 60) {
+                        tempEl.style.color = '#f39c12';
+                    } else {
+                        tempEl.style.color = '#2ecc71';
+                    }
+                }
+            });
+    }
+
+    refreshBtn.onclick = loadSystemInfo;
+    loadSystemInfo();
+    setInterval(loadSystemInfo, 5000);
+
+    loadLogsBtn.onclick = () => {
+        const logType = document.getElementById('logType').value;
+        fetch(`/api/system/logs?type=${logType}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('logContent').textContent = data.logs;
+                } else {
+                    document.getElementById('logContent').textContent = 
+                        'Error loading logs: ' + data.message;
+                }
+            });
+    };
+
+    rebootBtn.onclick = () => {
+        if (confirm('Are you sure you want to reboot the system?')) {
+            fetch('/api/system/reboot', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    showNotification(data.message, data.success ? 'warning' : 'error');
+                });
+        }
+    };
+
+    shutdownBtn.onclick = () => {
+        if (confirm('Are you sure you want to shutdown the system? This will require physical access to restart.')) {
+            fetch('/api/system/shutdown', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    showNotification(data.message, data.success ? 'warning' : 'error');
+                });
+        }
+    };
+});
+</script>
+{% endblock %}

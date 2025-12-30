@@ -1,0 +1,51 @@
+[4m [0m[4m [0m[4mUNIT                                                       [0m[4m [0m[4mLOAD  [0m[4m [0m[4mACTIVE[0m[4m [0m[4mSUB    [0m[4m [0m[4mDESCRIPTION                                           [0m
+  alsa-restore.service                                        loaded active [0;38;5;245mexited [0m Save/Restore Sound Card State
+  avahi-daemon.service                                        loaded active running Avahi mDNS/DNS-SD Stack
+  console-setup.service                                       loaded active [0;38;5;245mexited [0m Set console font and keymap
+  cron.service                                                loaded active running Regular background program processing daemon
+  cups-browsed.service                                        loaded active running Make remote CUPS printers available locally
+  cups.service                                                loaded active running CUPS Scheduler
+  dbus.service                                                loaded active running D-Bus System Message Bus
+  dhcpcd.service                                              loaded active running DHCP Client Daemon on all interfaces
+  getty@tty1.service                                          loaded active running Getty on tty1
+  ipcam-backend.service                                       loaded active running IP Camera Backend Service
+  ipcam-stream.service                                        loaded active running IP Camera RTSP Streaming Service
+  keyboard-setup.service                                      loaded active [0;38;5;245mexited [0m Set the console keyboard layout
+  kmod-static-nodes.service                                   loaded active [0;38;5;245mexited [0m Create List of Static Device Nodes
+  mediamtx.service                                            loaded active running MediaMTX RTSP/ONVIF Server
+  ModemManager.service                                        loaded active running Modem Manager
+  NetworkManager.service                                      loaded active running Network Manager
+  onvif-server.service                                        loaded active running Simple ONVIF Server for Pi Camera
+  polkit.service                                              loaded active running Authorization Manager
+  rpi-eeprom-update.service                                   loaded active [0;38;5;245mexited [0m Check for Raspberry Pi EEPROM updates
+  rpi-setup-loop@var-swap.service                             loaded active [0;38;5;245mexited [0m rpi-setup-loop - set up file on loop device
+  serial-getty@ttyS0.service                                  loaded active running Serial Getty on ttyS0
+  ssh.service                                                 loaded active running OpenBSD Secure Shell server
+  systemd-binfmt.service                                      loaded active [0;38;5;245mexited [0m Set Up Additional Binary Formats
+  systemd-fsck@dev-disk-by\x2dpartuuid-c0b14162\x2d01.service loaded active [0;38;5;245mexited [0m File System Check on /dev/disk/by-partuuid/c0b14162-01
+  systemd-journal-flush.service                               loaded active [0;38;5;245mexited [0m Flush Journal to Persistent Storage
+  systemd-journald.service                                    loaded active running Journal Service
+  systemd-logind.service                                      loaded active running User Login Management
+  systemd-modules-load.service                                loaded active [0;38;5;245mexited [0m Load Kernel Modules
+  systemd-random-seed.service                                 loaded active [0;38;5;245mexited [0m Load/Save OS Random Seed
+  systemd-remount-fs.service                                  loaded active [0;38;5;245mexited [0m Remount Root and Kernel File Systems
+  systemd-sysctl.service                                      loaded active [0;38;5;245mexited [0m Apply Kernel Variables
+  systemd-timesyncd.service                                   loaded active running Network Time Synchronization
+  systemd-tmpfiles-setup-dev-early.service                    loaded active [0;38;5;245mexited [0m Create Static Device Nodes in /dev gracefully
+  systemd-tmpfiles-setup-dev.service                          loaded active [0;38;5;245mexited [0m Create Static Device Nodes in /dev
+  systemd-tmpfiles-setup.service                              loaded active [0;38;5;245mexited [0m Create System Files and Directories
+  systemd-udev-load-credentials.service                       loaded active [0;38;5;245mexited [0m Load udev Rules from Credentials
+  systemd-udev-trigger.service                                loaded active [0;38;5;245mexited [0m Coldplug All udev Devices
+  systemd-udevd.service                                       loaded active running Rule-based Manager for Device Events and Files
+  systemd-user-sessions.service                               loaded active [0;38;5;245mexited [0m Permit User Sessions
+  systemd-zram-setup@zram0.service                            loaded active [0;38;5;245mexited [0m Create swap on /dev/zram0
+  user-runtime-dir@1000.service                               loaded active [0;38;5;245mexited [0m User Runtime Directory /run/user/1000
+  user@1000.service                                           loaded active running User Manager for UID 1000
+  vncserver-x11-serviced.service                              loaded active running VNC Server in Service Mode daemon
+  wpa_supplicant.service                                      loaded active running WPA supplicant
+
+[0;38;5;245mLegend: LOAD   → Reflects whether the unit definition was properly loaded.[0m
+[0;38;5;245m        ACTIVE → The high-level unit activation state, i.e. generalization of SUB.[0m
+[0;38;5;245m        SUB    → The low-level unit activation state, values depend on unit type.[0m
+
+44 loaded units listed.

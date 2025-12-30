@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📹 Live Camera View</h2>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Live Stream Preview</h3>
+        <button id="refreshBtn" class="btn btn-sm">↻ Refresh</button>
+    </div>
+
+    <div class="card-body">
+
+        <div id="videoStatus"
+             style="text-align:center; padding:8px; font-size:0.95em; color:#666;">
+            🔄 Connecting to live stream...
+        </div>
+
+        <!-- FIXED SIZE PREVIEW BOX -->
+        <div style="
+            margin-top:10px;
+            display:flex;
+            justify-content:center;
+        ">
+            <video id="video"
+                   autoplay
+                   muted
+                   playsinline
+                   controls
+                   style="
+                       width:100%;
+                       max-width:720px;
+                       height:405px;
+                       background:#000;
+                       border-radius:8px;
+                       object-fit:contain;
+                   ">
+            </video>
+        </div>
+
+        <!-- STREAM INFO -->
+        <div class="stream-info" style="margin-top:12px;">
+            <p>
+                <strong>Preview URL:</strong>
+                <a id="streamUrl"
+                   href="#"
+                   target="_blank"
+                   style="color:#4a90e2; text-decoration:underline;">
+                   Loading...
+                </a>
+            </p>
+
+            <p>
+                <strong>Status:</strong>
+                <span id="streamStatus">Checking...</span>
+            </p>
+        </div>
+
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Stream Control</h3>
+    </div>
+
+    <div class="card-body">
+        <button id="restartStreamBtn" class="btn btn-warning">
+            ↻ Restart Stream
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let pc = null;
+let previewRunning = false;
+let currentStream = null;
+
+/* ===============================
+   Stop WebRTC Preview
+================================ */
+function stopPreview() {
+    if (pc) {
+        pc.close();
+        pc = null;
+    }
+    previewRunning = false;
+    currentStream = null;
+    document.getElementById("video").srcObject = null;
+}
+
+/* ===============================
+   Start WebRTC Preview (LOCAL IP)
+================================ */
+async function startPreview(streamName) {
+
+    if (previewRunning && currentStream === streamName) {
+        return; // ✅ DO NOT RESTART
+    }
+
+    stopPreview();
+
+    const video  = document.getElementById("video");
+    const status = document.getElementById("videoStatus");
+    const localIp = location.hostname;
+
+    pc = new RTCPeerConnection();
+    previewRunning = true;
+    currentStream = streamName;
+
+    pc.ontrack = (event) => {
+        video.srcObject = event.streams[0];
+        status.textContent = "🟢 Live preview connected";
+        status.style.color = "green";
+    };
+
+    pc.onconnectionstatechange = () => {
+        if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+            previewRunning = false;
+            status.textContent = "🔴 Preview disconnected";
+            status.style.color = "red";
+        }
+    };
+
+    pc.addTransceiver("video", { direction: "recvonly" });
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    const res = await fetch(
+        `http://${localIp}:8889/${streamName}/Sub/whep`,{
+            method: "POST",
+            headers: {
+                "Content-Type": "application/sdp",
+                "Authorization": "Basic " + btoa("user:password")
+            },
+            body: offer.sdp
+        });
+        
+        /*{
+            method: "POST",
+            headers: { "Content-Type": "application/sdp" },
+            body: offer.sdp
+        }
+    );*/
+
+    const answer = await res.text();
+    await pc.setRemoteDescription({ type: "answer", sdp: answer });
+}
+
+/* ===============================
+   UI Helpers
+================================ */
+function setStopped() {
+    stopPreview();
+    document.getElementById("videoStatus").textContent = "🔴 Stream stopped";
+    document.getElementById("videoStatus").style.color = "red";
+    document.getElementById("streamStatus").textContent = "🔴 Stopped";
+    document.getElementById("streamStatus").style.color = "red";
+    document.getElementById("streamUrl").textContent = "Unavailable";
+}
+
+/* ===============================
+   Load Stream Status
+================================ */
+function loadStream() {
+    fetch("/api/stream/status")
+        .then(res => res.json())
+        .then(data => {
+
+            if (!data.success || !data.running) {
+                setStopped();
+                return;
+            }
+
+            const streamName = data.stream_name;
+            const localIp = location.hostname;
+
+            const previewUrl = `http://${localIp}:8888/${streamName}/Sub`;
+
+            document.getElementById("streamUrl").textContent = previewUrl;
+            document.getElementById("streamUrl").href = previewUrl;
+
+            document.getElementById("streamStatus").textContent = "🟢 Running";
+            document.getElementById("streamStatus").style.color = "green";
+
+            if (!previewRunning) {
+                startPreview(streamName);
+            }
+        })
+        .catch(() => setStopped());
+}
+
+/* ===============================
+   Buttons
+================================ */
+document.getElementById("refreshBtn").onclick = loadStream;
+
+document.getElementById("restartStreamBtn").onclick = () => {
+    stopPreview();
+    fetch("/api/stream/restart", { method: "POST" })
+        .then(r => r.json())
+        .then(d => {
+            alert(d.message);
+            setTimeout(loadStream, 3000);
+        });
+};
+
+/* ===============================
+   Initial Load
+================================ */
+loadStream();
+setInterval(loadStream, 15000); // status only, no reload
+</script>
+{% endblock %}

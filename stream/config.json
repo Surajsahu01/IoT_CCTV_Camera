@@ -1,0 +1,10 @@
+{
+  "server_ip": "10.49.37.200",
+  "rtsp_port": 554,
+  "stream_name": "camera1",
+  "width": null,
+  "height": null,
+  "fps": null,
+  "lens_position": 0.0,
+  "bitrate": 3000000
+}

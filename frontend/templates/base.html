@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Camera Control Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <div class="logo">
+                <!-- <h2>📹 IP Camera</h2> -->
+                 <h2><a href="/" class="nav-link">📹 IP Camera</a></h2>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/live" class="nav-link">🎥 Live View</a></li>
+                <li><a href="/camera" class="nav-link">⚙️ Camera Settings</a></li>
+                <li><a href="/stream" class="nav-link">📡 Stream Config</a></li>
+                <li><a href="/network" class="nav-link">🌐 Network</a></li>
+                <li><a href="/system" class="nav-link">💻 System</a></li>
+                <li><a href="/logout" class="nav-link">🔚 Logout</a></li>
+
+            </ul>
+        </nav>
+
+        <main class="content">
+            <header class="header">
+                <h1>IP Camera Control Panel</h1>
+                <div id="status-indicator" class="status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Ready</span>
+                </div>
+            </header>
+
+            {% block content %}
+            <div class="welcome">
+                <h2>Welcome to IP Camera Firmware</h2>
+                <p>Select an option from the sidebar to get started.</p>
+                
+                <div class="quick-actions">
+                    <a href="/live" class="btn btn-primary">View Live Stream</a>
+                    <a href="/camera" class="btn btn-secondary">Configure Camera</a>
+                    <a href="/stream" class="btn btn-secondary">Stream Settings</a>
+                </div>
+            </div>
+            {% endblock %}
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,16 @@
+[Unit]
+Description=IP Camera Backend Service
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/ipcam/backend
+ExecStart=/usr/bin/python3 /home/pi/ipcam/backend/app.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/pi/ipcam/logs/backend.log
+StandardError=append:/home/pi/ipcam/logs/backend.log
+
+[Install]
+WantedBy=multi-user.target
