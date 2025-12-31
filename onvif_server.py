@@ -1,10 +1,11 @@
-# from flask import Flask, Response
-# import socket, os, uuid
+# #!/usr/bin/env python3
+# from flask import Flask, Response, request
+# import socket
 
-# app = Flask(__name__)
-# DEVICE_UUID = str(uuid.uuid4())
-
-# def get_local_ip():
+# # --------------------------
+# # Helper to get Pi IP
+# # --------------------------
+# def get_pi_ip():
 #     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #     try:
 #         s.connect(("8.8.8.8", 80))
@@ -13,126 +14,249 @@
 #         s.close()
 #     return ip
 
-# def build_rtsp_url(path):
-#     user = os.getenv("RTSP_USER")
-#     pwd  = os.getenv("RTSP_PASS")
-#     port = os.getenv("ONVIF_RTSP_PORT", "8554")
+# PI_IP = get_pi_ip()
+# ONVIF_PORT = 8081
+# RTSP_PORT = 8554
+# USERNAME = "admin"
+# PASSWORD = "password"
+# STREAM_NAME = "camera1"
 
-#     auth = f"{user}:{pwd}@" if user and pwd else ""
-#     return f"rtsp://{auth}{get_local_ip()}:{port}/{path}"
+# app = Flask(__name__)
 
+# # --------------------------
+# # Device Service POST
+# # --------------------------
 # @app.route("/onvif/device_service", methods=["POST"])
-# def device_service():
-#     return Response(f"""<?xml version="1.0"?>
-# <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
-#  <soap:Body>
-#   <GetDeviceInformationResponse xmlns="http://www.onvif.org/ver10/device/wsdl">
-#    <Manufacturer>RaspberryPi</Manufacturer>
-#    <Model>Pi Camera</Model>
-#    <FirmwareVersion>1.0</FirmwareVersion>
-#    <SerialNumber>{DEVICE_UUID}</SerialNumber>
-#    <HardwareId>RPI</HardwareId>
-#   </GetDeviceInformationResponse>
-#  </soap:Body>
-# </soap:Envelope>""",
-#     mimetype="application/soap+xml")
+# def device_service_post():
+#     return Response(f"""
+#     <Envelope xmlns="http://www.w3.org/2003/05/soap-envelope">
+#       <Body>
+#         <GetDeviceInformationResponse xmlns="http://www.onvif.org/ver10/device/wsdl">
+#           <Manufacturer>RaspberryPi</Manufacturer>
+#           <Model>ONVIF-CAM</Model>
+#           <FirmwareVersion>1.0</FirmwareVersion>
+#           <SerialNumber>RPI-001</SerialNumber>
+#           <HardwareId>RPI</HardwareId>
+#         </GetDeviceInformationResponse>
+#       </Body>
+#     </Envelope>
+#     """, mimetype="application/soap+xml")
 
+# # --------------------------
+# # Device Service GET (browser debug)
+# # --------------------------
+# @app.route("/onvif/device_service", methods=["GET"])
+# def device_service_get():
+#     return f"""
+#     <h2>ONVIF Device Service Running</h2>
+#     <p>Use POST with SOAP to query device info.</p>
+#     <p>Pi IP: {PI_IP}</p>
+#     <p>RTSP Main: rtsp://{USERNAME}:{PASSWORD}@{PI_IP}:{RTSP_PORT}/{STREAM_NAME}/Main</p>
+#     <p>RTSP Sub: rtsp://{USERNAME}:{PASSWORD}@{PI_IP}:{RTSP_PORT}/{STREAM_NAME}/Sub</p>
+#     """
+
+# # --------------------------
+# # Media Service POST
+# # --------------------------
 # @app.route("/onvif/media_service", methods=["POST"])
 # def media_service():
-#     main_path = os.getenv("ONVIF_RTSP_MAIN_PATH")
+#     data = request.data.decode()
+#     profile = "MainProfile" if "MainProfile" in data else "SubProfile"
+#     stream_path = "Main" if profile == "MainProfile" else "Sub"
+#     rtsp_url = f"rtsp://{USERNAME}:{PASSWORD}@{PI_IP}:{RTSP_PORT}/{STREAM_NAME}/{stream_path}"
 
-#     return Response(f"""<?xml version="1.0"?>
-# <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
-#  <soap:Body>
-#   <GetStreamUriResponse xmlns="http://www.onvif.org/ver10/media/wsdl">
-#    <MediaUri>
-#     <Uri>{build_rtsp_url(main_path)}</Uri>
-#     <InvalidAfterConnect>false</InvalidAfterConnect>
-#     <InvalidAfterReboot>false</InvalidAfterReboot>
-#     <Timeout>PT60S</Timeout>
-#    </MediaUri>
-#   </GetStreamUriResponse>
-#  </soap:Body>
-# </soap:Envelope>""",
-#     mimetype="application/soap+xml")
+#     return Response(f"""
+#     <Envelope xmlns="http://www.w3.org/2003/05/soap-envelope">
+#       <Body>
+#         <GetStreamUriResponse xmlns="http://www.onvif.org/ver10/media/wsdl">
+#           <MediaUri>
+#             <Uri>{rtsp_url}</Uri>
+#           </MediaUri>
+#         </GetStreamUriResponse>
+#       </Body>
+#     </Envelope>
+#     """, mimetype="application/soap+xml")
 
-# app.run(host="0.0.0.0", port=8000)
+# # --------------------------
+# # Info page for browser debug
+# # --------------------------
+# @app.route("/")
+# def home():
+#     return f"""
+#     <h1>Raspberry Pi ONVIF Server</h1>
+#     <p>ONVIF Device Service: <a href="/onvif/device_service">/onvif/device_service</a></p>
+#     <p>ONVIF Media Service: <a href="/onvif/media_service">/onvif/media_service</a></p>
+#     <p>RTSP Main: rtsp://{USERNAME}:{PASSWORD}@{PI_IP}:{RTSP_PORT}/{STREAM_NAME}/Main</p>
+#     <p>RTSP Sub: rtsp://{USERNAME}:{PASSWORD}@{PI_IP}:{RTSP_PORT}/{STREAM_NAME}/Sub</p>
+#     """
+
+# # --------------------------
+# # Run Flask
+# # --------------------------
+# if __name__ == "__main__":
+#     print(f"ONVIF server running on {PI_IP}:{ONVIF_PORT}")
+#     print(f"RTSP Main: rtsp://{USERNAME}:{PASSWORD}@{PI_IP}:{RTSP_PORT}/{STREAM_NAME}/Main")
+#     print(f"RTSP Sub: rtsp://{USERNAME}:{PASSWORD}@{PI_IP}:{RTSP_PORT}/{STREAM_NAME}/Sub")
+#     app.run(host="0.0.0.0", port=ONVIF_PORT, debug=False)
+
 
 
 
 #!/usr/bin/env python3
-from flask import Flask, Response
-import socket, os, uuid
+"""
+Simple ONVIF Device + Media Server
+Compatible with Hikvision / Dahua / CP Plus
+"""
+
+from flask import Flask, Response, request
+import socket
+import json
+from datetime import datetime
 
 app = Flask(__name__)
-DEVICE_UUID = str(uuid.uuid4())
 
-# -----------------------------
-# Helper: Detect local IP
-# -----------------------------
-def get_local_ip():
+# -------------------------------
+# Get Raspberry Pi IP
+# -------------------------------
+def get_pi_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
+        return s.getsockname()[0]
     finally:
         s.close()
-    return ip
 
-# -----------------------------
-# Build RTSP URL dynamically
-# -----------------------------
-def build_rtsp_url(path):
-    user = os.getenv("ONVIF_RTSP_USER")
-    pwd  = os.getenv("ONVIF_RTSP_PASS")
-    port = os.getenv("ONVIF_RTSP_PORT", "8554")
-    auth = f"{user}:{pwd}@" if user and pwd else ""
-    return f"rtsp://{auth}{get_local_ip()}:{port}/{path}"
+# -------------------------------
+# Configuration
+# -------------------------------
+CONFIG = {
+    "ip_address": get_pi_ip(),
+    "onvif_port": 8081,
+    "rtsp_port": 8554,
+    "username": "admin",
+    "password": "password",
+    "stream_name": "camera1",
+    "main_stream": {
+        "width": 1280,
+        "height": 720,
+        "fps": 25,
+        "bitrate": 3000
+    },
+    "sub_stream": {
+        "width": 640,
+        "height": 360,
+        "fps": 15,
+        "bitrate": 600
+    }
+}
 
-# -----------------------------
-# Device service endpoint
-# -----------------------------
-@app.route("/onvif/device_service", methods=["POST"])
+# -------------------------------
+# Device Information
+# -------------------------------
+def get_device_information():
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope"
+ xmlns:tds="http://www.onvif.org/ver10/device/wsdl">
+ <env:Body>
+  <tds:GetDeviceInformationResponse>
+   <tds:Manufacturer>Raspberry Pi</tds:Manufacturer>
+   <tds:Model>Pi Camera</tds:Model>
+   <tds:FirmwareVersion>1.0</tds:FirmwareVersion>
+   <tds:SerialNumber>RPI-ONVIF-001</tds:SerialNumber>
+   <tds:HardwareId>RaspberryPi</tds:HardwareId>
+  </tds:GetDeviceInformationResponse>
+ </env:Body>
+</env:Envelope>"""
+
+# -------------------------------
+# Capabilities
+# -------------------------------
+def get_capabilities():
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope"
+ xmlns:tds="http://www.onvif.org/ver10/device/wsdl">
+ <env:Body>
+  <tds:GetCapabilitiesResponse>
+   <tds:Capabilities>
+    <tds:Media>
+     <tds:XAddr>http://{CONFIG['ip_address']}:{CONFIG['onvif_port']}/onvif/media_service</tds:XAddr>
+    </tds:Media>
+   </tds:Capabilities>
+  </tds:GetCapabilitiesResponse>
+ </env:Body>
+</env:Envelope>"""
+
+# -------------------------------
+# Media Profiles
+# -------------------------------
+def get_profiles():
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope"
+ xmlns:trt="http://www.onvif.org/ver10/media/wsdl">
+ <env:Body>
+  <trt:GetProfilesResponse>
+   <trt:Profiles token="MainProfile">
+    <trt:Name>MainStream</trt:Name>
+   </trt:Profiles>
+   <trt:Profiles token="SubProfile">
+    <trt:Name>SubStream</trt:Name>
+   </trt:Profiles>
+  </trt:GetProfilesResponse>
+ </env:Body>
+</env:Envelope>"""
+
+# -------------------------------
+# Stream URI
+# -------------------------------
+def get_stream_uri(profile):
+    stream = "Main" if profile == "MainProfile" else "Sub"
+    uri = f"rtsp://{CONFIG['username']}:{CONFIG['password']}@" \
+          f"{CONFIG['ip_address']}:{CONFIG['rtsp_port']}/" \
+          f"{CONFIG['stream_name']}/{stream}"
+
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope"
+ xmlns:trt="http://www.onvif.org/ver10/media/wsdl">
+ <env:Body>
+  <trt:GetStreamUriResponse>
+   <trt:MediaUri>
+    <trt:Uri>{uri}</trt:Uri>
+   </trt:MediaUri>
+  </trt:GetStreamUriResponse>
+ </env:Body>
+</env:Envelope>"""
+
+# -------------------------------
+# ONVIF Endpoints
+# -------------------------------
+@app.route("/onvif/device_service", methods=["GET", "POST"])
 def device_service():
-    xml = f"""<?xml version="1.0"?>
-<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
- <soap:Body>
-  <GetDeviceInformationResponse xmlns="http://www.onvif.org/ver10/device/wsdl">
-   <Manufacturer>RaspberryPi</Manufacturer>
-   <Model>Pi Camera</Model>
-   <FirmwareVersion>1.0</FirmwareVersion>
-   <SerialNumber>{DEVICE_UUID}</SerialNumber>
-   <HardwareId>RPI</HardwareId>
-  </GetDeviceInformationResponse>
- </soap:Body>
-</soap:Envelope>"""
-    return Response(xml, status=200, content_type="application/soap+xml; charset=utf-8")
+    data = request.data.decode(errors="ignore")
+    if "GetCapabilities" in data:
+        return Response(get_capabilities(), mimetype="application/soap+xml")
+    return Response(get_device_information(), mimetype="application/soap+xml")
 
-# -----------------------------
-# Media service endpoint
-# -----------------------------
 @app.route("/onvif/media_service", methods=["POST"])
 def media_service():
-    main_path = os.getenv("ONVIF_RTSP_MAIN_PATH", "camera/Main")
-    sub_path  = os.getenv("ONVIF_RTSP_SUB_PATH", "camera/Sub")
-    xml = f"""<?xml version="1.0"?>
-<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
- <soap:Body>
-  <GetStreamUriResponse xmlns="http://www.onvif.org/ver10/media/wsdl">
-   <MediaUri>
-    <Uri>{build_rtsp_url(main_path)}</Uri>
-    <InvalidAfterConnect>false</InvalidAfterConnect>
-    <InvalidAfterReboot>false</InvalidAfterReboot>
-    <Timeout>PT60S</Timeout>
-   </MediaUri>
-  </GetStreamUriResponse>
- </soap:Body>
-</soap:Envelope>"""
-    return Response(xml, status=200, content_type="application/soap+xml; charset=utf-8")
+    data = request.data.decode(errors="ignore")
+    if "GetProfiles" in data:
+        return Response(get_profiles(), mimetype="application/soap+xml")
+    if "GetStreamUri" in data:
+        profile = "MainProfile" if "MainProfile" in data else "SubProfile"
+        return Response(get_stream_uri(profile), mimetype="application/soap+xml")
+    return Response(get_profiles(), mimetype="application/soap+xml")
 
-# -----------------------------
-# Run Flask app
-# -----------------------------
+@app.route("/info")
+def info():
+    return f"""
+    <h1>ONVIF Server Running</h1>
+    <pre>{json.dumps(CONFIG, indent=2)}</pre>
+    <p>{datetime.now()}</p>
+    """
+
+# -------------------------------
+# Start Server
+# -------------------------------
 if __name__ == "__main__":
-    print(f"ONVIF Server running on {get_local_ip()}:8001")
-    app.run(host="0.0.0.0", port=8001)
+    print(f"ONVIF Server started on {CONFIG['ip_address']}:{CONFIG['onvif_port']}")
+    app.run(host="0.0.0.0", port=CONFIG["onvif_port"], debug=False)
