@@ -1,186 +1,3 @@
-# import json
-# import subprocess
-# import os
-# import signal
-
-# class Stream:
-#     def __init__(self, config_path):
-#         self.config_path = config_path
-#         self.stream_script = '/home/pi/ipcam/stream/start_stream.sh'
-#         self.pid_file = '/tmp/ipcam_stream.pid'
-    
-#     def load_config(self):
-#         try:
-#             with open(self.config_path, 'r') as f:
-#                 return json.load(f)
-#         except:
-#             return self.get_default_config()
-    
-#     def get_default_config(self):
-#         return {
-#             "stream": {
-#                 "server_ip": "10.251.246.200",
-#                 "rtsp_port": 8554,
-#                 "stream_name": "camera",
-#                 "width": 1920,
-#                 "height": 1080,
-#                 "fps": 30,
-#                 "bitrate": 4000000,
-#                 "lens_position": 0.0
-#             }
-#         }
-    
-#     def save_config(self, config):
-#         try:
-#             with open(self.config_path, 'w') as f:
-#                 json.dump(config, f, indent=2)
-#             return True
-#         except Exception as e:
-#             print(f"Error saving config: {e}")
-#             return False
-    
-#     def get_settings(self):
-#         config = self.load_config()
-#         return {
-#             "success": True,
-#             "settings": config.get("stream", {})
-#         }
-    
-#     def update_settings(self, new_settings):
-#         try:
-#             config = self.load_config()
-#             if "stream" not in config:
-#                 config["stream"] = {}
-            
-#             config["stream"].update(new_settings)
-            
-#             if self.save_config(config):
-#                 # Update stream config for script
-#                 stream_config = {
-#                     "server_ip": config["stream"].get("server_ip"),
-#                     "rtsp_port": config["stream"].get("rtsp_port"),
-#                     "stream_name": config["stream"].get("stream_name"),
-#                     "width": config["stream"].get("width"),
-#                     "height": config["stream"].get("height"),
-#                     "fps": config["stream"].get("fps"),
-#                     "lens_position": config["stream"].get("lens_position", 0.0)
-#                 }
-                
-#                 with open('/home/pi/ipcam/stream/config.json', 'w') as f:
-#                     json.dump(stream_config, f, indent=2)
-                
-#                 return {"success": True, "message": "Stream settings updated"}
-#             else:
-#                 return {"success": False, "message": "Failed to save settings"}
-#         except Exception as e:
-#             return {"success": False, "message": str(e)}
-    
-#     def is_running(self):
-#         """Check if stream is running"""
-#         if os.path.exists(self.pid_file):
-#             try:
-#                 with open(self.pid_file, 'r') as f:
-#                     pid = int(f.read().strip())
-                
-#                 # Check if process exists
-#                 os.kill(pid, 0)
-#                 return True
-#             except (OSError, ValueError):
-#                 # Process doesn't exist, clean up pid file
-#                 try:
-#                     os.remove(self.pid_file)
-#                 except:
-#                     pass
-#                 return False
-#         return False
-    
-#     def get_status(self):
-#         """Get stream status"""
-#         running = self.is_running()
-#         config = self.load_config()
-#         stream_config = config.get("stream", {})
-        
-#         rtsp_url = f"rtsp://{stream_config.get('server_ip')}:{stream_config.get('rtsp_port')}/{stream_config.get('stream_name')}"
-        
-#         return {
-#             "success": True,
-#             "running": running,
-#             "rtsp_url": rtsp_url,
-#             "status": "Streaming" if running else "Stopped"
-#         }
-    
-#     def start(self):
-#         """Start RTSP stream"""
-#         try:
-#             if self.is_running():
-#                 return {
-#                     "success": False, 
-#                     "message": "Stream is already running"
-#                 }
-            
-#             # Start stream script in background
-#             process = subprocess.Popen(
-#                 ['bash', self.stream_script],
-#                 stdout=subprocess.DEVNULL,
-#                 stderr=subprocess.DEVNULL,
-#                 start_new_session=True
-#             )
-            
-#             # Save PID
-#             with open(self.pid_file, 'w') as f:
-#                 f.write(str(process.pid))
-            
-#             return {
-#                 "success": True,
-#                 "message": "Stream started successfully"
-#             }
-#         except Exception as e:
-#             return {"success": False, "message": str(e)}
-    
-#     def stop(self):
-#         """Stop RTSP stream"""
-#         try:
-#             if not self.is_running():
-#                 return {
-#                     "success": False,
-#                     "message": "Stream is not running"
-#                 }
-            
-#             with open(self.pid_file, 'r') as f:
-#                 pid = int(f.read().strip())
-            
-#             # Kill process group
-#             try:
-#                 os.killpg(os.getpgid(pid), signal.SIGTERM)
-#             except ProcessLookupError:
-#                 pass
-            
-#             # Clean up PID file
-#             try:
-#                 os.remove(self.pid_file)
-#             except:
-#                 pass
-            
-#             return {
-#                 "success": True,
-#                 "message": "Stream stopped successfully"
-#             }
-#         except Exception as e:
-#             return {"success": False, "message": str(e)}
-    
-#     def restart(self):
-#         """Restart RTSP stream"""
-#         stop_result = self.stop()
-#         if not stop_result["success"] and "not running" not in stop_result["message"]:
-#             return stop_result
-        
-#         import time
-#         time.sleep(2)
-        
-#         return self.start()
-
-
-
 import json
 import subprocess
 import os
@@ -205,12 +22,9 @@ class Stream:
             "stream": {
                 "server_ip": "10.251.246.200",
                 "rtsp_port": 8554,
-                "stream_name": "camera",
-                "width": 1080,
-                "height": 720,
-                "fps": 25,
-                "bitrate": 2000000,
-                "lens_position": 0.0
+                "stream_name": "camera1",
+                "bitrate": 2500000,
+              
             }
         }
     
@@ -322,12 +136,16 @@ class Stream:
         running = self.is_running()
         config = self.load_config()
         stream_config = config.get("stream", {})
+        auth = config.get("auth", {})
 
         server_ip = stream_config.get("server_ip")
         stream_name = stream_config.get("stream_name")
         rtsp_port = stream_config.get("rtsp_port")
+        user = auth.get("username")
+        password = auth.get("password")
+        
 
-        rtsp_url = f"rtsp://{server_ip}:{rtsp_port}/{stream_name}"
+        rtsp_url = f"rtsp://{user}:{password}@{server_ip}:{rtsp_port}/{stream_name}/Sub"
         mjpeg_url = f"http://{server_ip}:8888/{stream_name}"
 
         # Check if service exists

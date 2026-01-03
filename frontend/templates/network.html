@@ -61,10 +61,16 @@
                 <span id="ethIp" class="info-value">-</span>
             </div>
 
-            <div class="info-item">
+            <!-- <div class="info-item">
                 <span class="info-label">MAC Address</span>
                 <span id="ethMac" class="info-value">-</span>
+            </div> -->
+
+            <div class="info-item">
+                <span class="info-label">Link State</span>
+                <span id="ethLink" class="info-value">-</span>
             </div>
+
 
             <div class="info-item">
                 <span class="info-label">Link Speed</span>
@@ -472,10 +478,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     d.active_interface || '-';
 
                 /* Active MAC */
-                document.getElementById('macAddress').textContent =
-                    d.connection_type === 'ethernet'
-                        ? d.ethernet.mac
-                        : d.wifi.mac || 'N/A';
+                //document.getElementById('macAddress').textContent =
+                 //   d.connection_type === 'ethernet'
+                  //      ? d.ethernet.mac
+                   //     : d.wifi.mac || 'N/A';
+
+
+                /* ===== ACTIVE MAC (SHOW ONLY ONCE) ===== */
+                let activeMac = 'N/A';
+
+                if (d.connection_type === 'ethernet' && d.ethernet?.mac) {
+                    activeMac = d.ethernet.mac;
+                } else if (d.connection_type === 'wifi' && d.wifi?.mac) {
+                    activeMac = d.wifi.mac;
+                }
+
+                document.getElementById('macAddress').textContent = activeMac;
+
 
                 /* ===== ETHERNET ===== */
                 document.getElementById('ethStatus').textContent =
@@ -484,8 +503,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('ethIp').textContent =
                     d.ethernet.ip_address || '-';
 
-                document.getElementById('ethMac').textContent =
-                    d.ethernet.mac || '-';
+                //document.getElementById('ethMac').textContent =
+                 //   d.ethernet.mac || '-';
+                document.getElementById('ethLink').textContent =
+                    d.ethernet.connected ? ' Link Up' : ' Link Down';
+
+
+                
+                document.getElementById('ethLink').style.color =
+                    d.ethernet.connected ? 'green' : 'red';
+
+
 
                 document.getElementById('ethSpeed').textContent =
                     d.ethernet.speed || '-';

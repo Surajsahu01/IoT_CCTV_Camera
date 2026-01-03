@@ -647,6 +647,17 @@ load_config() {
     AF_MODE=$(jq -r '.camera.autofocus_mode' "$CONFIG")
     LENS=$(jq -r '.camera.lens_position' "$CONFIG")
 
+    GOP=$(jq -r '.camera.gop // 50' "$CONFIG")
+    PROFILE=$(jq -r '.camera.profile // "main"' "$CONFIG")
+    RC_MODE=$(jq -r '.camera.rc_mode // "vbr"' "$CONFIG")
+    HDR=$(jq -r '.camera.hdr // false' "$CONFIG")
+
+    # Night mode config
+    NIGHT_ENABLED=$(jq -r '.night.enabled // false' "$CONFIG")
+    NIGHT_THRESHOLD=$(jq -r '.night.threshold // 0.18' "$CONFIG")
+    NIGHT_HYSTERESIS=$(jq -r '.night.hysteresis // 0.05' "$CONFIG")
+
+
     # RTSP URLs
     LOCAL_MAIN_RTSP_URL="rtsp://${RTSP_USER}:${RTSP_PASS}@${LOCAL_IP}:8554/${STREAM_NAME}/Main"
     LOCAL_SUB_RTSP_URL="rtsp://${RTSP_USER}:${RTSP_PASS}@${LOCAL_IP}:8554/${STREAM_NAME}/Sub"
@@ -670,6 +681,56 @@ server_available() {
     timeout 2 nc -z "$SERVER_IP" "$RTSP_PORT" 2>/dev/null
     return $?
 }
+
+
+
+# =========================================================
+# Night detection helpers
+# =========================================================
+NIGHT_MODE=false
+
+get_luma() {
+    # Capture 1 frame, calculate average brightness (0–1)
+    rpicam-still -n -t 50 --width 320 --height 240 -o - 2>/dev/null | \
+    ffmpeg -hide_banner -loglevel fatal -i pipe:0 \
+        -vf "signalstats" -frames:v 1 -f null - 2>&1 | \
+    awk -F'YAVG:' '{print $2}' | awk '{print $1/255}'
+}
+
+# apply_day_settings() {
+#     log "☀️ Switching to DAY exposure"
+#     rpicam-ctl set exposure auto
+#     rpicam-ctl set analoggain 1
+#     rpicam-ctl set shutter 0
+# }
+
+# apply_night_settings() {
+#     log "🌙 Switching to NIGHT exposure"
+#     rpicam-ctl set exposure long
+#     rpicam-ctl set analoggain 8
+#     rpicam-ctl set shutter 100000
+# }
+
+
+# =========================================================
+# Camera tuning (NoIR Wide)
+# =========================================================
+apply_day_settings() {
+    log "☀️ DAY MODE (forced)"
+    rpicam-ctl set exposure normal
+    rpicam-ctl set analoggain 1
+    rpicam-ctl set shutter 0
+    rpicam-ctl set awb auto
+}
+
+apply_night_settings() {
+    log "🌙 NIGHT MODE (auto)"
+    rpicam-ctl set exposure long
+    rpicam-ctl set analoggain 6
+    rpicam-ctl set shutter 100000
+    rpicam-ctl set awb greyworld
+}
+
 
 # =========================================================
 # Cleanup function
@@ -701,6 +762,18 @@ fi
 trap cleanup_streams EXIT INT TERM
 
 load_config
+# if [ "$NIGHT_ENABLED" = "true" ]; then
+#     apply_day_settings
+# fi
+
+# Apply correct mode at startup
+if [ "$NIGHT_ENABLED" = "true" ]; then
+    apply_day_settings
+else
+    NIGHT_MODE=false
+    apply_day_settings
+fi
+
 STREAM_PID=""
 SERVER_CHECK_COUNTER=0
 SERVER_CHECK_INTERVAL=30  # Check server availability every 30 loops (150 seconds)
@@ -724,6 +797,60 @@ while true; do
         STREAM_PID=""
         load_config
     fi
+
+
+    # # Automatic Night Mode
+    # LUMA=$(get_luma)
+
+    # if [ -n "$LUMA" ]; then
+    #     if [ "$NIGHT_MODE" = false ] && \
+    #     awk "BEGIN {exit !($LUMA < ($NIGHT_THRESHOLD - $NIGHT_HYSTERESIS))}"; then
+    #         NIGHT_MODE=true
+    #         apply_night_settings
+    #         log "🌙 Night mode automatically enabled (Luma=$LUMA)"
+    #     fi
+
+    #     if [ "$NIGHT_MODE" = true ] && \
+    #     awk "BEGIN {exit !($LUMA > ($NIGHT_THRESHOLD + $NIGHT_HYSTERESIS))}"; then
+    #         NIGHT_MODE=false
+    #         apply_day_settings
+    #         log "☀️ Night mode automatically disabled (Luma=$LUMA)"
+    #     fi
+    # fi
+
+
+    # -----------------------------------------------------
+    # Manual Day / Auto Night logic
+    # -----------------------------------------------------
+    if [ "$NIGHT_ENABLED" = "true" ]; then
+        # AUTO MODE
+        LUMA=$(get_luma)
+
+        if [ -n "$LUMA" ]; then
+            if [ "$NIGHT_MODE" = false ] && \
+               awk "BEGIN{exit !($LUMA < ($NIGHT_THRESHOLD - $NIGHT_HYSTERESIS))}"; then
+                NIGHT_MODE=true
+                apply_night_settings
+                log "🌙 Auto Night enabled (Luma=$LUMA)"
+            fi
+
+            if [ "$NIGHT_MODE" = true ] && \
+               awk "BEGIN{exit !($LUMA > ($NIGHT_THRESHOLD + $NIGHT_HYSTERESIS))}"; then
+                NIGHT_MODE=false
+                apply_day_settings
+                log "☀️ Auto Day enabled (Luma=$LUMA)"
+            fi
+        fi
+    else
+        # MANUAL DAY
+        if [ "$NIGHT_MODE" = true ]; then
+            NIGHT_MODE=false
+            apply_day_settings
+            log "☀️ Manual DAY selected by user"
+        fi
+    fi
+
+
 
     # Periodic server availability check
     ((SERVER_CHECK_COUNTER++))
@@ -773,6 +900,28 @@ while true; do
 
         log "▶️  Starting camera capture and streaming pipeline..."
 
+        # CMD=(
+        #     rpicam-vid
+        #     --timeout 0
+        #     --nopreview
+        #     --inline
+        #     --flush
+        #     --codec h264
+        #     --width "$WIDTH"
+        #     --height "$HEIGHT"
+        #     --framerate "$FPS"
+        #     --bitrate "$BITRATE"
+        #     --brightness "$BRIGHTNESS"
+        #     --contrast "$CONTRAST"
+        #     --saturation "$SATURATION"
+        #     --sharpness "$SHARPNESS"
+        #     --autofocus-mode "$AF_MODE"
+        #     --profile main
+        #     --level 4.2
+        #     -o -
+        # )
+
+
         CMD=(
             rpicam-vid
             --timeout 0
@@ -784,17 +933,28 @@ while true; do
             --height "$HEIGHT"
             --framerate "$FPS"
             --bitrate "$BITRATE"
+            --intra "$GOP"
+            --profile "$PROFILE"
+            --level 4.2
             --brightness "$BRIGHTNESS"
             --contrast "$CONTRAST"
             --saturation "$SATURATION"
             --sharpness "$SHARPNESS"
             --autofocus-mode "$AF_MODE"
-            --profile main
-            --level 4.2
+            --denoise cdn_fast
             -o -
         )
 
+
         [ "$AF_MODE" = "manual" ] && CMD+=(--lens-position "$LENS")
+
+        if [ "$HDR" = "true" ]; then
+            CMD+=(--hdr)
+            log "🌈 HDR enabled"
+        else
+            log "🌈 HDR disabled (recommended for streaming)"
+        fi
+
 
         # Build streaming pipeline based on server availability
         if [ "$SERVER_ENABLED" = true ]; then

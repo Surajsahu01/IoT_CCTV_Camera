@@ -136,7 +136,7 @@ async function startPreview(streamName) {
             method: "POST",
             headers: {
                 "Content-Type": "application/sdp",
-                "Authorization": "Basic " + btoa("user:password")
+                "Authorization": "Basic " + btoa("admin:password")
             },
             body: offer.sdp
         });

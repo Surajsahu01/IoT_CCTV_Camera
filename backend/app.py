@@ -16,6 +16,10 @@ import io
 import requests
 from flask import stream_with_context
 
+import time
+import threading
+
+
 app = Flask(__name__, 
            template_folder='/home/pi/ipcam/frontend/templates',
            static_folder='/home/pi/ipcam/frontend/static')
@@ -44,6 +48,34 @@ def cleanup():
     print("Backend shutdown")
 
 atexit.register(cleanup)
+
+
+
+
+# =============================================================================
+# Backend log auto-cleanup (24 hours)
+# =============================================================================
+
+BACKEND_LOG_FILE = "/home/pi/ipcam/logs/backend.log"
+LOG_MAX_AGE = 24 * 60 * 60      # 24 hours
+LOG_CHECK_INTERVAL = 60 * 60   # check every 1 hour
+
+
+def backend_log_cleanup():
+    while True:
+        try:
+            if os.path.exists(BACKEND_LOG_FILE):
+                age = time.time() - os.path.getmtime(BACKEND_LOG_FILE)
+
+                if age > LOG_MAX_AGE:
+                    # SAFER OPTION: truncate instead of delete
+                    with open(BACKEND_LOG_FILE, "w"):
+                        pass
+                    print("backend.log truncated (older than 24h)")
+        except Exception as e:
+            print(f"Backend log cleanup error: {e}")
+
+        time.sleep(LOG_CHECK_INTERVAL)
 
 
 
@@ -407,4 +439,12 @@ def after_request(response):
 if __name__ == '__main__':
     # Ensure HLS directory exists on startup
     # os.makedirs(HLS_DIR, exist_ok=True)
+
+    # Start backend log cleanup thread
+    log_thread = threading.Thread(
+        target=backend_log_cleanup,
+        daemon=True
+    )
+    log_thread.start()
+    
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)

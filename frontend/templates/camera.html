@@ -2,7 +2,11 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>⚙️ Camera Settings</h2>
+    <h2>⚙️ Camera Settings
+        <!-- <span id="nightBadge" style="display:none; color: #FFD700; font-size: 0.8em; margin-left: 10px;">
+            🌙 Night Mode Active
+        </span> -->
+    </h2>
 </div>
 
 <div class="card">
@@ -60,16 +64,14 @@
             </div>
 
             <div class="form-group">
-                <label>Exposure Mode</label>
-                <select id="exposure_mode" class="form-control">
-                    <option value="auto">Auto</option>
-                    <option value="manual">Manual</option>
-                    <option value="night">Night</option>
-                    <option value="sports">Sports</option>
+                <label>Night Exposure Mode</label>
+                <select id="night_enabled" class="form-control">
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
                 </select>
             </div>
 
-            <div class="form-group">
+            <!-- <div class="form-group">
                 <label>White Balance</label>
                 <select id="awb_mode" class="form-control">
                     <option value="auto">Auto</option>
@@ -78,7 +80,7 @@
                     <option value="tungsten">Tungsten</option>
                     <option value="fluorescent">Fluorescent</option>
                 </select>
-            </div>
+            </div> -->
 
             <div class="button-group">
                 <button type="submit" class="btn btn-primary">💾 Save Settings</button>
@@ -109,6 +111,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const autofocusMode = document.getElementById('autofocus_mode');
     const lensSlider = document.getElementById('lens_position');
 
+    const nightSelect = document.getElementById('night_enabled');
+    const brightnessSlider = document.getElementById('brightness');
+    const contrastSlider   = document.getElementById('contrast');
+    const saturationSlider = document.getElementById('saturation');
+    const sharpnessSlider  = document.getElementById('sharpness');
+    // const nightBadge = document.getElementById('nightBadge');
+
     /* ---------- SLIDER VALUES ---------- */
     ['brightness', 'contrast', 'saturation', 'sharpness', 'lens_position'].forEach(id => {
         const slider = document.getElementById(id);
@@ -122,12 +131,33 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateLensSlider() {
         lensSlider.disabled = (autofocusMode.value !== 'manual');
     }
-
-    // Initial check
     updateLensSlider();
-
-    // Update when autofocus mode changes
     autofocusMode.addEventListener('change', updateLensSlider);
+
+    /* ---------- ENABLE/DISABLE SLIDERS IN NIGHT MODE ---------- */
+    function updateNightControls() {
+        const nightEnabled = nightSelect.value === "true";
+        brightnessSlider.disabled = nightEnabled;
+        contrastSlider.disabled   = nightEnabled;
+        saturationSlider.disabled = nightEnabled;
+        sharpnessSlider.disabled  = nightEnabled;
+    }
+
+    /* ---------- SHOW/HIDE NIGHT BADGE ---------- */
+    // function updateNightBadge() {
+    //     const nightEnabled = nightSelect.value === "true";
+    //     nightBadge.style.display = nightEnabled ? "inline" : "none";
+    // }
+
+    // Initial update
+    updateNightControls();
+    // updateNightBadge();
+
+    // Update when night mode changes
+    nightSelect.addEventListener('change', () => {
+        updateNightControls();
+        // updateNightBadge();
+    });
 
     /* ---------- LOAD SETTINGS ---------- */
     fetch('/api/camera/settings')
@@ -144,8 +174,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('sharpness').value = s.sharpness;
             document.getElementById('lens_position').value = s.lens_position;
             document.getElementById('autofocus_mode').value = s.autofocus_mode;
-            document.getElementById('exposure_mode').value = s.exposure_mode;
-            document.getElementById('awb_mode').value = s.awb_mode;
+            document.getElementById('night_enabled').value = s.night_enabled ? "true" : "false";
+            // document.getElementById('awb_mode').value = s.awb_mode;
 
             document.getElementById('brightnessVal').textContent = s.brightness;
             document.getElementById('contrastVal').textContent = s.contrast;
@@ -153,8 +183,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('sharpnessVal').textContent = s.sharpness;
             document.getElementById('lensVal').textContent = s.lens_position;
 
-            // Update lens slider state after loading settings
+            // Update UI after loading settings
             updateLensSlider();
+            updateNightControls();
+            // updateNightBadge();
         });
 
     /* ---------- SAVE SETTINGS ---------- */
@@ -175,9 +207,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 saturation: +saturation.value,
                 sharpness: +sharpness.value,
                 lens_position: +lens_position.value,
-                autofocus_mode: autofocus_mode.value,
-                exposure_mode: exposure_mode.value,
-                awb_mode: awb_mode.value
+                autofocus_mode: autofocusMode.value,
+                // awb_mode: document.getElementById('awb_mode').value,
+                night_enabled: nightSelect.value === "true"
             })
         })
         .then(r => r.json())

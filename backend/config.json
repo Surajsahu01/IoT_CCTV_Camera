@@ -7,16 +7,20 @@
     "contrast": 1,
     "saturation": 1,
     "sharpness": 1,
-    "lens_position": 2,
-    "autofocus_mode": "manual",
+    "lens_position": 0,
+    "autofocus_mode": "continuous",
     "exposure_mode": "auto",
-    "awb_mode": "auto"
+    "awb_mode": "auto",
+    "gop": 50,
+    "profile": "main",
+    "rc_mode": "vbr",
+    "hdr": false
   },
   "stream": {
     "server_ip": "10.49.37.200",
     "rtsp_port": 554,
-    "stream_name": "camera1",
-    "bitrate": 3000000
+    "stream_name": "Cam1",
+    "bitrate": 2500000
   },
   "substream": {
     "width": 640,
@@ -28,21 +32,9 @@
     "username": "admin",
     "password": "password"
   },
-  "network": {
-    "default": {
-      "mode": "static",
-      "ip_address": "192.168.1.50",
-      "gateway": "192.168.1.1",
-      "dns": "8.8.8.8"
-    },
-    "current": {
-      "mode": "static",
-      "ip_address": "192.168.1.50",
-      "gateway": "192.168.1.1",
-      "dns": "8.8.8.8"
-    }
-  },
-  "webrtc": {
-    "enabled": true
+  "night": {
+    "enabled": true,
+    "threshold": 0.18,
+    "hysteresis": 0.05
   }
 }
