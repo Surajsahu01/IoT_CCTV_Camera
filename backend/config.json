@@ -8,7 +8,7 @@
     "saturation": 1,
     "sharpness": 1,
     "lens_position": 0,
-    "autofocus_mode": "continuous",
+    "autofocus_mode": "manual",
     "exposure_mode": "auto",
     "awb_mode": "auto",
     "gop": 50,
@@ -17,9 +17,9 @@
     "hdr": false
   },
   "stream": {
-    "server_ip": "10.49.37.200",
-    "rtsp_port": 554,
-    "stream_name": "Cam1",
+    "server_ip": "69.62.73.222",
+    "rtsp_port": 8554,
+    "stream_name": "Cam6",
     "bitrate": 2500000
   },
   "substream": {
@@ -34,7 +34,6 @@
   },
   "night": {
     "enabled": true,
-    "threshold": 0.18,
-    "hysteresis": 0.05
+    "_comment": "When enabled=true: Camera auto-switches between DAY mode (7 AM - 7 PM) and NIGHT mode (7 PM - 7 AM). When enabled=false: Camera always uses DAY mode settings."
   }
 }

@@ -19,7 +19,6 @@ from flask import stream_with_context
 import time
 import threading
 
-
 app = Flask(__name__, 
            template_folder='/home/pi/ipcam/frontend/templates',
            static_folder='/home/pi/ipcam/frontend/static')
@@ -56,7 +55,7 @@ atexit.register(cleanup)
 # Backend log auto-cleanup (24 hours)
 # =============================================================================
 
-BACKEND_LOG_FILE = "/home/pi/ipcam/logs/backend.log"
+BACKEND_LOG_FILE = "/home/pi/ipcam/IoT_CCTV_Camera/logs/backend.log"
 LOG_MAX_AGE = 24 * 60 * 60      # 24 hours
 LOG_CHECK_INTERVAL = 60 * 60   # check every 1 hour
 
@@ -329,23 +328,61 @@ def configure_wifi():
 @app.route("/api/network/static", methods=["POST"])
 @login_required
 def set_static_ip():
-    # return network.save_static_ip(request.json)
     data = request.json
-    cfg = network.load_config()
-    cfg["network"]["current"] = {
-        "mode": "static",
-        "ip_address": data["ip_address"],
-        "gateway": data["gateway"],
-        "dns": data.get("dns", "8.8.8.8")
-    }
-    network.save_config(cfg)
-    return jsonify(network.apply_from_config())
+    result = network.set_static_nmcli(
+        data['ip_address'],
+        data['gateway'],
+        data.get('dns', '8.8.8.8')
+    )
+    
+    # Save to config if successful
+    if result['success']:
+        try:
+            cfg = network.load_config()
+            cfg['network']['current'] = {
+                'mode': 'static',
+                'ip_address': data['ip_address'],
+                'gateway': data['gateway'],
+                'dns': data.get('dns', '8.8.8.8')
+            }
+            network.save_config(cfg)
+        except:
+            pass  # Config save is optional
+    
+    return jsonify(result)
+# def set_static_ip():
+#     # return network.save_static_ip(request.json)
+#     data = request.json
+#     cfg = network.load_config()
+#     cfg["network"]["current"] = {
+#         "mode": "static",
+#         "ip_address": data["ip_address"],
+#         "gateway": data["gateway"],
+#         "dns": data.get("dns", "8.8.8.8")
+#     }
+#     network.save_config(cfg)
+#     return jsonify(network.apply_from_config())
 
 
-@app.route("/api/network/dhcp", methods=["POST"])
+# @app.route("/api/network/dhcp", methods=["POST"])
+# @login_required
+# def set_dhcp():
+#     return network.set_dhcp()
+@app.route('/api/network/dhcp', methods=['POST'])
 @login_required
-def set_dhcp():
-    return network.set_dhcp()
+def set_dhcp_mode():
+    result = network.set_dhcp_nmcli()  # Calls the network.py method
+    
+    # Save to config if successful
+    if result['success']:
+        try:
+            cfg = network.load_config()
+            cfg['network']['current']['mode'] = 'dhcp'
+            network.save_config(cfg)
+        except:
+            pass
+    
+    return jsonify(result)
 
 
 @app.route("/api/network/reset", methods=["POST"])
@@ -405,13 +442,13 @@ def get_system_info():
     return jsonify(system.get_info())
 
 @app.route('/api/system/reboot', methods=['POST'])
-@login_required
+# @login_required
 def reboot_system():
     result = system.reboot()
     return jsonify(result)
 
 @app.route('/api/system/shutdown', methods=['POST'])
-@login_required
+# @login_required
 def shutdown_system():
     result = system.shutdown()
     return jsonify(result)
@@ -436,7 +473,9 @@ def after_request(response):
     return response
 
 
+
 if __name__ == '__main__':
+
     # Ensure HLS directory exists on startup
     # os.makedirs(HLS_DIR, exist_ok=True)
 

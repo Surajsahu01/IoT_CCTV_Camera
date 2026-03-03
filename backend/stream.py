@@ -6,9 +6,10 @@ import time
 class Stream:
     def __init__(self, config_path):
         self.config_path = config_path
-        self.stream_script = '/home/pi/ipcam/stream/start_stream.sh'
+        self.stream_script = '/home/pi/ipcam/IoT_CCTV_Camera/stream/start_stream.sh'
         self.service_name = 'ipcam-stream.service'
-        self.log_file = '/home/pi/ipcam/stream/logs/stream.log'
+        self.onvif_service = 'onvif-server.service'
+        self.log_file = '/home/pi/ipcam/IoT_CCTV_Camera/stream/logs/stream.log'
     
     def load_config(self):
         try:
@@ -20,9 +21,9 @@ class Stream:
     def get_default_config(self):
         return {
             "stream": {
-                "server_ip": "10.251.246.200",
+                "server_ip": "69.62.73.222",
                 "rtsp_port": 8554,
-                "stream_name": "camera1",
+                "stream_name": "Cam2",
                 "bitrate": 2500000,
               
             }
@@ -66,14 +67,15 @@ class Stream:
                 }
                 
                 # Ensure directory exists
-                os.makedirs('/home/pi/ipcam/stream', exist_ok=True)
+                os.makedirs('/home/pi/ipcam/IoT_CCTV_Camera/stream', exist_ok=True)
                 
-                with open('/home/pi/ipcam/stream/config.json', 'w') as f:
+                with open('/home/pi/ipcam/IoT_CCTV_Camera/stream/config.json', 'w') as f:
                     json.dump(stream_config, f, indent=2)
                 
                 # Restart service if it's running to apply new settings
                 if self.is_running():
-                    self.restart()
+                    # self.restart()
+                    self.restart_all()
                 
                 return {"success": True, "message": "Stream settings updated"}
             else:
@@ -189,6 +191,7 @@ class Stream:
             try:
                 result = subprocess.run(
                     ['sudo', 'systemctl', 'start', self.service_name],
+                    
                     capture_output=True,
                     text=True,
                     timeout=10
@@ -221,7 +224,7 @@ class Stream:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     start_new_session=True,
-                    cwd='/home/pi/ipcam/stream',
+                    cwd='/home/pi/ipcam/IoT_CCTV_Camera/stream',
                     preexec_fn=os.setpgrp
                 )
                 
@@ -286,3 +289,95 @@ class Stream:
         
         # Start again
         return self.start()
+
+
+
+    # --------------------------
+    # ONVIF SERVICE CONTROL
+    # --------------------------
+
+    def is_onvif_running(self):
+        try:
+            result = subprocess.run(
+                ['systemctl', 'is-active', self.onvif_service],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            return result.stdout.strip() == 'active'
+        except:
+            return False
+
+    def start_onvif(self):
+        try:
+            if self.is_onvif_running():
+                return {"success": False, "message": "ONVIF server already running"}
+
+            subprocess.run(
+                ['sudo', 'systemctl', 'start', self.onvif_service],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            time.sleep(2)
+
+            return {
+                "success": self.is_onvif_running(),
+                "message": "ONVIF server started"
+            }
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def stop_onvif(self):
+        try:
+            subprocess.run(
+                ['sudo', 'systemctl', 'stop', self.onvif_service],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            time.sleep(2)
+
+            return {
+                "success": not self.is_onvif_running(),
+                "message": "ONVIF server stopped"
+            }
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def restart_onvif(self):
+        try:
+            subprocess.run(
+                ['sudo', 'systemctl', 'restart', self.onvif_service],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            time.sleep(2)
+
+            return {
+                "success": self.is_onvif_running(),
+                "message": "ONVIF server restarted"
+            }
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+
+
+    def start_all(self):
+        stream = self.start()
+        onvif = self.start_onvif()
+        return {"stream": stream, "onvif": onvif}
+
+    def stop_all(self):
+        stream = self.stop()
+        onvif = self.stop_onvif()
+        return {"stream": stream, "onvif": onvif}
+
+    def restart_all(self):
+        stream = self.restart()
+        onvif = self.restart_onvif()
+        return {"stream": stream, "onvif": onvif}

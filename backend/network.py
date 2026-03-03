@@ -10,7 +10,7 @@ class Network:
         self.dhcpcd_conf = '/etc/dhcpcd.conf'
         self.wpa_conf = '/etc/wpa_supplicant/wpa_supplicant.conf'
         self.config_path = "/home/pi/ipcam/backend/config.json"
-
+        self.connection_name = "Wired connection 1"  # Default nmcli connection name
 
     def load_config(self):
         with open(self.config_path, "r") as f:
@@ -20,22 +20,18 @@ class Network:
         with open(self.config_path, "w") as f:
             json.dump(cfg, f, indent=2)
 
-
-
     def apply_from_config(self):
         cfg = self.load_config()
         cur = cfg["network"]["current"]
 
         if cur["mode"] == "dhcp":
-            return self.set_dhcp()
+            return self.set_dhcp_nmcli()
         else:
-            return self.set_static(
+            return self.set_static_nmcli(
                 cur["ip_address"],
                 cur["gateway"],
-                cur.get("dns", "8.8.8.8")
+                cur.get("dns", "8.8.8.8 8.8.4.4")
             )
-
-    
 
     def reset_to_default(self):
         cfg = self.load_config()
@@ -43,10 +39,83 @@ class Network:
         self.save_config(cfg)
         return self.apply_from_config()
 
+    # ---------------- NMCLI METHODS (NEW) ----------------
 
-    # ---------------- STATIC IP ----------------
+    def set_static_nmcli(self, ip, gateway, dns):
+        """Set static IP using nmcli (NetworkManager)"""
+        try:
+            # Validate IP addresses
+            ipaddress.ip_address(ip)
+            ipaddress.ip_address(gateway)
+
+            # Format DNS - handle both single and multiple DNS servers
+            if isinstance(dns, str):
+                dns_formatted = dns.replace(",", " ").strip()
+            else:
+                dns_formatted = " ".join(dns)
+
+            # Run nmcli command to set static IP
+            cmd = [
+                "sudo", "nmcli", "connection", "modify", self.connection_name,
+                "ipv4.method", "manual",
+                "ipv4.addresses", f"{ip}/24",
+                "ipv4.gateway", gateway,
+                "ipv4.dns", dns_formatted
+            ]
+
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+            # Bring connection up to apply changes
+            subprocess.run(
+                ["sudo", "nmcli", "connection", "up", self.connection_name],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+
+            return {
+                "success": True,
+                "message": f"Static IP set to {ip} using NetworkManager. Reopen firmware using new IP.",
+                "ip": ip
+            }
+
+        except subprocess.CalledProcessError as e:
+            return {
+                "success": False,
+                "message": f"nmcli error: {e.stderr if e.stderr else str(e)}"
+            }
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def set_dhcp_nmcli(self):
+        """Set DHCP using nmcli (NetworkManager)"""
+        try:
+            # 1. Modify connection to use automatic IP (DHCP)
+            cmd = [
+                "sudo", "nmcli", "connection", "modify", "Wired connection 1",
+                "ipv4.method", "auto"  # ← This switches to DHCP
+            ]
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+            # 2. Restart the connection to apply changes
+            subprocess.run(
+                ["sudo", "nmcli", "connection", "up", "Wired connection 1"],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+
+            return {
+                "success": True,
+                "message": "Switched to DHCP using NetworkManager successfully"
+            }
+        except Exception as e:
+            return {"success": False, "message": f"Error: {str(e)}"}
+
+    # ---------------- DHCPCD METHODS (LEGACY) ----------------
 
     def set_static(self, ip, gateway, dns):
+        """Set static IP using dhcpcd (legacy method)"""
         try:
             ipaddress.ip_address(ip)
             ipaddress.ip_address(gateway)
@@ -67,7 +136,6 @@ static domain_name_servers={dns}
             with open(self.dhcpcd_conf, "r") as f:
                 content = f.read()
 
-            # Remove old firmware block
             content = re.sub(
                 r"# ===== FIRMWARE STATIC IP =====[\\s\\S]*?$",
                 "",
@@ -92,9 +160,8 @@ static domain_name_servers={dns}
         except Exception as e:
             return {"success": False, "message": str(e)}
 
-    # ---------------- DHCP ----------------
-
     def set_dhcp(self):
+        """Set DHCP using dhcpcd (legacy method)"""
         try:
             with open(self.dhcpcd_conf, "r") as f:
                 content = f.read()
@@ -120,8 +187,7 @@ static domain_name_servers={dns}
         except Exception as e:
             return {"success": False, "message": str(e)}
 
-
-
+    # ---------------- STATUS METHODS ----------------
 
     def _get_ip(self, iface):
         try:
@@ -215,32 +281,7 @@ static domain_name_servers={dns}
             }
         }
 
-
     # ---------------- WIFI ----------------
-
-#     def configure_wifi(self, ssid, password):
-#         try:
-#             wpa = f"""country=IN
-# ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-# update_config=1
-
-# network={{
-#     ssid="{ssid}"
-#     psk="{password}"
-# }}
-# """
-#             with open("/tmp/wpa_supplicant.conf", "w") as f:
-#                 f.write(wpa)
-
-#             subprocess.run(["sudo", "mv", "/tmp/wpa_supplicant.conf", self.wpa_conf], check=True)
-#             subprocess.run(["sudo", "chmod", "600", self.wpa_conf], check=True)
-#             subprocess.run(["sudo", "wpa_cli", "-i", "wlan0", "reconfigure"], check=True)
-
-#             return {"success": True, "message": "WiFi credentials saved"}
-
-#         except Exception as e:
-#             return {"success": False, "message": str(e)}
-
 
     def configure_wifi(self, data):
         try:
@@ -295,18 +336,15 @@ static domain_name_servers={dns}
                 "message": f"WiFi error: {str(e)}"
             }
 
-
     def get_network_info(self):
         """Get detailed network information"""
         try:
             info = {}
             
-            # Get current IP
             ip_result = subprocess.run(['hostname', '-I'], 
                                       capture_output=True, text=True)
             info['ip'] = ip_result.stdout.strip().split()[0] if ip_result.stdout else "N/A"
             
-            # Get gateway
             route_result = subprocess.run(['ip', 'route', 'show', 'default'],
                                         capture_output=True, text=True)
             if route_result.stdout:
@@ -315,7 +353,6 @@ static domain_name_servers={dns}
             else:
                 info['gateway'] = "N/A"
             
-            # Get DNS
             try:
                 dns_result = subprocess.run(['cat', '/etc/resolv.conf'],
                                            capture_output=True, text=True)
@@ -327,7 +364,6 @@ static domain_name_servers={dns}
             except:
                 info['dns'] = "N/A"
             
-            # Check if static or DHCP by reading dhcpcd.conf
             with open(self.dhcpcd_conf, 'r') as f:
                 content = f.read()
                 info['is_static'] = 'interface wlan0' in content and 'static ip_address' in content
@@ -339,11 +375,8 @@ static domain_name_servers={dns}
         except Exception as e:
             return {"success": False, "message": str(e)}
 
-
     def _signal_to_int(self, signal_str):
         try:
-            # if not signal_str:
-            #     return -100
             return int(float(str(signal_str).split()[0]))
         except:
             return -100
@@ -351,14 +384,12 @@ static domain_name_servers={dns}
     def scan_wifi(self):
         """Scan for available WiFi networks using iw"""
         try:
-            # Ensure wlan0 is up
             subprocess.run(['sudo', 'ip', 'link', 'set', 'wlan0', 'up'], 
                         check=False, timeout=5, 
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
             time.sleep(1)
             
-            # Scan networks
             scan = subprocess.run(
                 ['sudo', 'iw', 'dev', 'wlan0', 'scan'],
                 capture_output=True,
@@ -379,28 +410,22 @@ static domain_name_servers={dns}
             for line in scan.stdout.splitlines():
                 line = line.strip()
 
-
                 if line.startswith("BSS"):
                     if current_network.get("ssid"):
                         ssid = current_network["ssid"]
-
                         if (
                             ssid not in networks or
                             self._signal_to_int(current_network.get("signal")) >
                             self._signal_to_int(networks[ssid].get("signal"))
                         ):
                             networks[ssid] = current_network
-
                     current_network = {}
 
-
-                # SSID name
                 elif line.startswith("SSID:"):
                     ssid = line.replace("SSID:", "").strip()
-                    if ssid:  # Skip hidden/empty SSIDs
+                    if ssid:
                         current_network["ssid"] = ssid
 
-                # Signal strength
                 elif "signal:" in line.lower():
                     try:
                         signal_match = re.search(r'(-?\d+\.\d+)', line)
@@ -410,7 +435,6 @@ static domain_name_servers={dns}
                     except:
                         pass
 
-                # Security detection
                 elif "RSN:" in line:
                     current_network["security"] = "WPA2"
                 elif "WPA:" in line and current_network.get("security") != "WPA2":
@@ -419,12 +443,8 @@ static domain_name_servers={dns}
                     if "security" not in current_network:
                         current_network["security"] = "WEP"
 
-            
-
-            # Add the last network
             if current_network.get("ssid"):
                 ssid = current_network["ssid"]
-
                 if (
                     ssid not in networks or
                     self._signal_to_int(current_network.get("signal")) >
@@ -432,9 +452,6 @@ static domain_name_servers={dns}
                 ):
                     networks[ssid] = current_network
 
-
-
-            # Convert to list and add defaults
             result = []
             for network in networks.values():
                 if "security" not in network:
@@ -443,12 +460,10 @@ static domain_name_servers={dns}
                     network["signal"] = "N/A"
                 result.append(network)
 
-
             result.sort(
                 key=lambda x: self._signal_to_int(x.get("signal")),
                 reverse=True
             )
-
 
             return {
                 "success": True,
