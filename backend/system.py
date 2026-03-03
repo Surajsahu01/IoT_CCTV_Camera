@@ -84,8 +84,25 @@ class System:
                 log_file = '/home/pi/ipcam/stream/logs/stream.log'
             elif log_type == 'backend':
                 log_file = '/home/pi/ipcam/logs/backend.log'
+
+            elif log_type == "camera-agent":   # ✅ Added
+                cmd = ["journalctl", "-u", "camera-agent", "-n", "100"]
             else:
                 log_file = '/home/pi/ipcam/logs/system.log'
+            
+            if log_type == "camera-agent":
+                # Use journalctl for camera-agent logs
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    return {
+                        "success": True,
+                        "logs": result.stdout
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": f"Failed to retrieve camera-agent logs: {result.stderr}"
+                    }
             
             if not os.path.exists(log_file):
                 return {
